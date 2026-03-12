@@ -4,6 +4,9 @@
 #include <iostream>
 #include <QThread>
 
+static constexpr const char* LIBVIRT_URI = "qemu:///system";
+
+
 /* libvirt state -> VMState */
 static VMState convertState(int state) {
 	switch (state){
@@ -26,7 +29,7 @@ static VMState convertState(int state) {
 std::vector<VMInfo> listVMs() {
 	std::vector<VMInfo> result;
 
-    virConnectPtr conn = virConnectOpen("qemu:///system");
+    virConnectPtr conn = virConnectOpen(LIBVIRT_URI);
 	if (!conn) return result;
 
 	virDomainPtr* domains = nullptr;
@@ -58,7 +61,7 @@ std::vector<VMInfo> listVMs() {
 
 bool startVM(const std::string& name)
 {
-    virConnectPtr conn = virConnectOpen("qemu:///system");
+    virConnectPtr conn = virConnectOpen(LIBVIRT_URI);
 	if(!conn) {
 		std::cerr << "Failed to connect to hypervisor\n";
 		return false;
@@ -80,7 +83,7 @@ bool startVM(const std::string& name)
 
 bool shutdownVM(const std::string& name)
 {
-    virConnectPtr conn = virConnectOpen("qemu:///system");
+    virConnectPtr conn = virConnectOpen(LIBVIRT_URI);
 	if (!conn)
 		return false;
 

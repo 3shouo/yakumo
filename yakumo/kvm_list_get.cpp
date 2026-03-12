@@ -2,7 +2,7 @@
 #include <libvirt/libvirt.h>
 
 int main(){
-	virConnectPtr conn = virConnectOpen("qemu+unix:///system");
+    virConnectPtr conn = virConnectOpen("qemu:///system");
 	if (conn == NULL) {
 		std::cerr << "Failed to connect to hypervisor" << std::endl;
 		return 1;
