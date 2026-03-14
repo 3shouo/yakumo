@@ -9,14 +9,20 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    core/libvirt_connection.cpp \
     core/vm_manager.cpp \
+    core/vm_repositry.cpp \
+    core/vm_state_converter.cpp \
     core/vm_types.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     ../yakumo/kvm-manager/vm_types.h \
+    core/libvirt_connection.h \
     core/vm_manager.h \
+    core/vm_repositry.h \
+    core/vm_state_converter.h \
     core/vm_types.h \
     mainwindow.h
 
