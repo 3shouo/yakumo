@@ -1,23 +1,68 @@
 
-# build directory
-build/
-
-# object files
-*.0
-
-# Qt Creator user setting
-*.user
+# =====================
+# Qt Creator
+# =====================
 *.pro.user
+*.pro.user.*
+*.creator
+*.creator.user
+*.creator.user.*
 
-# autosave
-*.autosave
+# =====================
+# Build directories
+# =====================
+yakumo-gui/build/
+build/
+build-*/
+out/
+debug/
+release/
 
-# CMake files
+# ====================
+# CMake
+# ====================
 CMakeFiles/
 CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
 
-# executable
-*.exe
-*.out
+# ====================
+# C++ build files
+# ====================
+*.o
+*.obj
+*.so
+*.a
+*.la
+*.lo
+*.dll
+*.dylib
 
+# ===================
+# Qt Generated files
+# ===================
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# ==================
+# Logs / temp
+# ==================
+*.log
+*.tmp
+*.swp
+*.~
+
+# =================
+# OS files
+# =================
+.DS_Store
+Thumbs.db
+
+# ================
+# Core dumps
+# ================
+core
+core.*
 
