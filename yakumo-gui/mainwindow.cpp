@@ -95,3 +95,18 @@ void MainWindow::on_shutdownButton_clicked()
     std::vector<VMInfo> vms = listVMs();
     updateTable(vms);
 }
+
+void MainWindow::on_rebootButton_clicked()
+{
+    qDebug() << "row =" << ui->vmTable->currentRow();
+
+    int row = ui->vmTable->currentRow();
+    if (row < 0) return;
+
+    QString name = ui->vmTable->item(row, 0)->text();
+
+    rebootVM(name.toStdString());
+
+    std::vector<VMInfo> vms = listVMs();
+    updateTable(vms);
+}

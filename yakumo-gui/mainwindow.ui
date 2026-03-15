@@ -57,9 +57,9 @@
    <widget class="QWidget" name="widget" native="true">
     <property name="geometry">
      <rect>
-      <x>0</x>
-      <y>290</y>
-      <width>272</width>
+      <x>10</x>
+      <y>300</y>
+      <width>331</width>
       <height>45</height>
      </rect>
     </property>
@@ -77,6 +77,13 @@
         <widget class="QPushButton" name="shutdownButton">
          <property name="text">
           <string>Shutdown</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="rebootButton">
+         <property name="text">
+          <string>Reboot</string>
          </property>
         </widget>
        </item>

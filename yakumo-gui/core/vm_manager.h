@@ -6,6 +6,7 @@
 
 bool startVM(const std::string& name);
 bool shutdownVM(const std::string& name);
+bool rebootVM(const std::string& name);
 bool deleteVM(const std::string& name);
 std::vector<VMInfo> listVMs();
 
