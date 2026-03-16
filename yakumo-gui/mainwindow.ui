@@ -59,7 +59,7 @@
      <rect>
       <x>10</x>
       <y>300</y>
-      <width>331</width>
+      <width>351</width>
       <height>45</height>
      </rect>
     </property>
@@ -77,6 +77,13 @@
         <widget class="QPushButton" name="shutdownButton">
          <property name="text">
           <string>Shutdown</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="forceStopButton">
+         <property name="text">
+          <string>Forcestop</string>
          </property>
         </widget>
        </item>
