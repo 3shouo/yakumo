@@ -6,6 +6,7 @@
 #include <QTableWidgetItem> // 2026/1/19 追加
 #include <QDebug>
 #include <QString>
+#include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -16,6 +17,13 @@ MainWindow::MainWindow(QWidget *parent)
     // VM一覧取得
     std::vector<VMInfo> vms = listVMs();
     updateTable(vms);     // 2026/1/19 追加
+    QTimer *timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, [this](){
+        qDebug() << "timer fired";
+        std::vector<VMInfo> vms = listVMs();
+        updateTable(vms);
+    });
+    timer->start(3000);
 }
 
 MainWindow::~MainWindow()

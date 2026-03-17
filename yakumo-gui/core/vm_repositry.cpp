@@ -28,7 +28,11 @@ std::vector<VMInfo> listVMs()
         virDomainInfo info;
         if (virDomainGetInfo(domains[i], &info) == 0) {
             VMInfo vm;
-            vm.name     = virDomainGetName(domains[i]);
+
+            vm.name     = virDomainGetName(domains[i]); //デバックのために一時的に追加
+            if (vm.name == "ubuntu-vm2"){
+                continue;
+            }
             vm.state    = convertState(info.state);
             vm.vcpus    = info.nrVirtCpu;
             vm.memoryMB = info.maxMem;
