@@ -23,6 +23,8 @@ private:
     Ui::MainWindow *ui;
 
     void updateTable(const std::vector<VMInfo>& vms); // 2026/1/19 追加
+    void updateDetail(const VMInfo& vm);
+    void cleareDetail();
 
 private slots:
     void on_startButton_clicked();
@@ -30,5 +32,6 @@ private slots:
     void on_rebootButton_clicked();
     void on_forceStopButton_clicked();
     void on_deleteButton_clicked();
+    void on_vmTable_cellClicked(int row, int column);
 };
 #endif // MAINWINDOW_H

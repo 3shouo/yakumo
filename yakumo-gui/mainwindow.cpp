@@ -66,9 +66,49 @@ void MainWindow::updateTable(const std::vector<VMInfo>& vms) // 2026/1/19 追加
     }
     ui->vmTable->resizeColumnsToContents();
 
+    if (!vms.empty()) {
+        ui->vmTable->selectRow(0);
+        updateDetail(vms[0]);
+    } else {
+        cleareDetail();
+    }
+
     if (ui->vmTable->rowCount() > 0)
     {
         ui->vmTable->selectRow(0);
+    }
+}
+
+void MainWindow::updateDetail(const VMInfo &vm)
+{
+    ui->detailNameValue->setText(QString::fromStdString((vm.name)));
+    ui->detailStateValue->setText(stateToString(vm.state));
+    ui->detailMemoryValue->setText(QString::number(vm.memoryMB) + "MB");
+    ui->detailVcpusValue->setText(QString::number(vm.vcpus));
+    ui->detailActiveValue->setText(vm.isActive ? "Yes" : "No");
+}
+
+void MainWindow::cleareDetail()
+{
+    ui->detailNameValue->setText("-");
+    ui->detailStateValue->setText("-");
+    ui->detailMemoryValue->setText("-");
+    ui->detailVcpusValue->setText("-");
+    ui->detailActiveValue->setText("-");
+}
+
+void MainWindow::on_vmTable_cellClicked(int row, int column)
+{
+    Q_UNUSED(column);
+
+    QString name = ui->vmTable->item(row, 0)->text();
+    std::vector<VMInfo> vms = listVMs();
+
+    for (const auto& vm : vms) {
+        if (QString::fromStdString(vm.name) == name){
+            updateDetail(vm);
+            return;
+        }
     }
 }
 
