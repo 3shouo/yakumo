@@ -29,5 +29,6 @@ private slots:
     void on_shutdownButton_clicked();
     void on_rebootButton_clicked();
     void on_forceStopButton_clicked();
+    void on_deleteButton_clicked();
 };
 #endif // MAINWINDOW_H

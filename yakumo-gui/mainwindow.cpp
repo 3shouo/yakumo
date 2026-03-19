@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QString>
 #include <QTimer>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -134,4 +135,36 @@ void MainWindow::on_forceStopButton_clicked()
     updateTable(vms);
 }
 
+void MainWindow::on_deleteButton_clicked()
+{
+    qDebug() << "row =" << ui->vmTable->currentRow();
 
+    int row = ui->vmTable->currentRow();
+    if (row < 0) return;
+
+    QString name = ui->vmTable->item(row, 0)->text();
+
+    auto reply = QMessageBox::question(
+        this,
+        "Delete VM",
+        QString("Delete VM '%1' ?\n This removes the libvirt defenition.").arg(name),
+        QMessageBox::Yes, QMessageBox::No
+        );
+
+    if (reply != QMessageBox::Yes){
+        return;
+    }
+
+    bool ok = deleteVM(name.toStdString());
+
+    if (!ok) {
+        QMessageBox::warning(
+            this,
+            "Delete failed",
+            "Delete failed.\nMake sure the VM is shutoff before deleting."
+            );
+    }
+
+    std::vector<VMInfo> vms = listVMs();
+    updateTable(vms);
+}
