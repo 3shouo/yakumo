@@ -1,5 +1,5 @@
 
-#include "vm_repositry.h"
+#include "vm_repository.h"
 #include "libvirt_connection.h"
 #include "vm_state_converter.h"
 
@@ -30,7 +30,7 @@ std::vector<VMInfo> listVMs()
             VMInfo vm;
             vm.name     = virDomainGetName(domains[i]);
 
-            if (vm.name == "ubuntu-vm2"){ //デバックのために一時的に追加
+            if (vm.name == "ubuntu-vm2"){ //デバッグのために一時的に追加
                 continue;
             }
 

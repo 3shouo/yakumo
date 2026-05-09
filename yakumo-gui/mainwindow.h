@@ -24,7 +24,7 @@ private:
 
     void updateTable(const std::vector<VMInfo>& vms); // 2026/1/19 追加
     void updateDetail(const VMInfo& vm);
-    void cleareDetail();
+    void clearDetail();
 
 private slots:
     void on_startButton_clicked();

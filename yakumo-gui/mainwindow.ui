@@ -83,7 +83,7 @@
        <item>
         <widget class="QPushButton" name="forceStopButton">
          <property name="text">
-          <string>Forcestop</string>
+          <string>Force Stop</string>
          </property>
         </widget>
        </item>

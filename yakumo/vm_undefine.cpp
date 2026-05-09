@@ -12,9 +12,9 @@ int main() {
 	}
 
 	//
-	virDomainPtr dom = virDomainLooukupByName(conn, vmName);
+	virDomainPtr dom = virDomainLookupByName(conn, vmName);
 	if (!dom) {
-		std::cerr << "Domain not fpund\n";
+		std::cerr << "Domain not found\n";
 		virConnectClose(conn);
 		return 1;
 	}
@@ -34,7 +34,7 @@ int main() {
 		if (virDomainDestroy(dom) < 0) {
 			std::cerr << "Failed to destroy (stop) VM \n";
 			virDomainFree(dom);
-			virDomainClose(conn);
+			virConnectClose(conn);
 			return 1;
 		}
 	}
@@ -44,7 +44,7 @@ int main() {
 		std::cerr << "Failed to undefine (delete) VM\n";
 		virDomainFree(dom);
 		virConnectClose(conn);
-		retrun 1;
+		return 1;
 	}
 
 	std::cout << "VM deleted successfully\n";

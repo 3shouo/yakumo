@@ -30,7 +30,7 @@ int main() {
 				break;
 			}
 			if (state == VIR_DOMAIN_SHUTOFF) {
-				std::cout << "Domain has completery shutdown\n";
+				std::cout << "Domain has completely shutdown\n";
 				break;
 			}
 

@@ -43,7 +43,7 @@ bool rebootVM(const std::string &name)
 
     virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());
     if (!dom){
-        std::cerr << "Domain not fpund\n";
+        std::cerr << "Domain not found\n";
         return false;
     }
 

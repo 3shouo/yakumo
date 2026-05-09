@@ -70,7 +70,7 @@ void MainWindow::updateTable(const std::vector<VMInfo>& vms) // 2026/1/19 追加
         ui->vmTable->selectRow(0);
         updateDetail(vms[0]);
     } else {
-        cleareDetail();
+        clearDetail();
     }
 
     if (ui->vmTable->rowCount() > 0)
@@ -88,7 +88,7 @@ void MainWindow::updateDetail(const VMInfo &vm)
     ui->detailActiveValue->setText(vm.isActive ? "Yes" : "No");
 }
 
-void MainWindow::cleareDetail()
+void MainWindow::clearDetail()
 {
     ui->detailNameValue->setText("-");
     ui->detailStateValue->setText("-");
@@ -187,7 +187,7 @@ void MainWindow::on_deleteButton_clicked()
     auto reply = QMessageBox::question(
         this,
         "Delete VM",
-        QString("Delete VM '%1' ?\n This removes the libvirt defenition.").arg(name),
+        QString("Delete VM '%1' ?\n This removes the libvirt definition.").arg(name),
         QMessageBox::Yes, QMessageBox::No
         );
 

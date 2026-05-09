@@ -5,7 +5,7 @@ int main() {
 	//ハイパーバイザーに接続
 	virConnectPtr conn = virConnectOpen("qemu+unix:///system");
 	if(!conn){
-		std::cerr << "Failed to connect to hypervisorn";
+		std::cerr << "Failed to connect to hypervisor\n";
 		return 1;
 	}
 
