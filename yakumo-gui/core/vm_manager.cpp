@@ -11,6 +11,10 @@
 #include <cctype>
 
 static constexpr const char* LIBVIRT_URI = "qemu:///system";
+static constexpr unsigned int MIN_MEMORY_MB = 256;
+static constexpr unsigned int MAX_MEMORY_MB = 32768;
+static constexpr unsigned int MIN_VCPUS = 1;
+static constexpr unsigned int MAX_VCPUS = 16;
 
 // VMの起動
 bool startVM(const std::string& name)
@@ -194,13 +198,17 @@ bool createVM(
         return false;
     }
 
-    if (memoryMB == 0) {
-        std::cerr << "Memory must be greater than 0\n";
+    if (memoryMB < MIN_MEMORY_MB || memoryMB > MAX_MEMORY_MB) {
+        std::cerr << "Memory must be between "
+                  << MIN_MEMORY_MB << " amd "
+                  << MAX_MEMORY_MB << " MB\n";
         return false;
     }
 
-    if (vcpus == 0) {
-        std::cerr << "vCPUs must be greater than 0\n";
+    if (vcpus < MIN_VCPUS || vcpus > MAX_VCPUS) {
+        std::cerr << "vCPUs must be between "
+                  << MIN_VCPUS << " and "
+                  << MAX_VCPUS << "\n";
         return false;
     }
 
