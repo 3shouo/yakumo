@@ -57,9 +57,9 @@
    <widget class="QWidget" name="widget" native="true">
     <property name="geometry">
      <rect>
-      <x>10</x>
+      <x>20</x>
       <y>300</y>
-      <width>351</width>
+      <width>551</width>
       <height>45</height>
      </rect>
     </property>
@@ -98,6 +98,13 @@
         <widget class="QPushButton" name="deleteButton">
          <property name="text">
           <string>Delete</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="createButton">
+         <property name="text">
+          <string>Create VM</string>
          </property>
         </widget>
        </item>
@@ -207,7 +214,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>23</height>
+     <height>27</height>
     </rect>
    </property>
   </widget>

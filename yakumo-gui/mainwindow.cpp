@@ -8,6 +8,7 @@
 #include <QString>
 #include <QTimer>
 #include <QMessageBox>
+#include <QInputDialog>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -203,6 +204,94 @@ void MainWindow::on_deleteButton_clicked()
             "Delete failed",
             "Delete failed.\nMake sure the VM is shutoff before deleting."
             );
+    }
+
+    std::vector<VMInfo> vms = listVMs();
+    updateTable(vms);
+}
+
+// VM作成ボタン(createButton)が押されたときの処理
+void MainWindow::on_createButton_clicked()
+{
+    bool okInput = false;
+
+    QString name = QInputDialog::getText(
+        this,
+        "Create VM",
+        "VM name:",
+        QLineEdit::Normal,
+        "",
+        &okInput
+    );
+
+    if (!okInput || name.isEmpty()) {
+        return;
+    }
+
+    int memoryMB = QInputDialog::getInt(
+        this,
+        "Create VM",
+        "Memory MB:",
+        2048,
+        256,
+        32768,
+        256,
+        &okInput
+    );
+
+    if (!okInput) {
+        return;
+    }
+
+    int vcpus = QInputDialog::getInt(
+        this,
+        "Create VM",
+        "vCPUs",
+        2,
+        1,
+        16,
+        1,
+        &okInput
+    );
+
+    if (!okInput) {
+        return;
+    }
+
+    QString diskPath = QInputDialog::getText(
+        this,
+        "Create VM",
+        "Disk Path:",
+        QLineEdit::Normal,
+        "/home/fujisawa/yakumo-test-images/test.qcow2",
+        &okInput
+    );
+
+    if (!okInput || diskPath.isEmpty()) {
+        return;
+    }
+
+    bool ok = createVM(
+        name.toStdString(),
+        static_cast<unsigned int> (memoryMB),
+        static_cast<unsigned int>(vcpus),
+        diskPath.toStdString()
+    );
+
+    qDebug() << "createVM result =" << ok;
+
+    if(ok) {
+        QMessageBox::information(
+            this,
+            "Create VM",
+            "VM was created successfully."
+        );
+    } else {
+        QMessageBox::warning(
+            this,
+            "Create VM",
+            "Failed to create VM."
+        );
     }
 
     std::vector<VMInfo> vms = listVMs();

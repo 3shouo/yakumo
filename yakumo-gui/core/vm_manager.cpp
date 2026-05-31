@@ -217,6 +217,12 @@ bool createVM(
         return false;
     }
 
+    // VMイメージを取得するパスを絶対パスかどうかチェックする
+    if (!std::filesystem::path(diskPath).is_absolute()) {
+        std::cerr << "Disk path must be absolute\n";
+        return false;
+    }
+
     if (!std::filesystem::exists(diskPath)) {
         std::cerr << "Disk image file does not exists\n";
         return false;
@@ -224,6 +230,12 @@ bool createVM(
 
     if (!std::filesystem::is_regular_file(diskPath)) {
         std::cerr << "Disk path is not a regular file\n";
+        return false;
+    }
+
+    // qcow2のみを許可するためのチェック
+    if (std::filesystem::path(diskPath).extension() != ".qcow2") {
+        std::cerr << "Disk image must be a qcow2 file\n";
         return false;
     }
 
@@ -248,9 +260,9 @@ bool createVM(
         << "<domain type='kvm'>"
         << "<name>" << escapedName << "</name>"
         << "<memory unit='MiB'>" << memoryMB << "</memory>"
-        << "<vcpus>" << vcpus << "</vcpus>"
+        << "<vcpu>" << vcpus << "</vcpu>"
         << "<os>"
-        << "<type arch='aarch64'>hvm</type>"
+        << "<type arch='x86_64'>hvm</type>"
         << "</os>"
         << "<devices>"
         << "<disk type='file' device='disk'>"
@@ -259,8 +271,8 @@ bool createVM(
         << "<target dev='vda' bus='virtio'/>"
         << "</disk>"
         << "<interface type='network'>"
-        << "<source network='default'>"
-        << "<model type='vertio'/>"
+        << "<source network='default'/>"
+        << "<model type='virtio'/>"
         << "</interface>"
         << "<console type='pty'/>"
         << "</devices>"
