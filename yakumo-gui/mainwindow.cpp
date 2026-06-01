@@ -4,11 +4,13 @@
 #include "vm_manager.h" // 2026/1/19 追加
 
 #include <QTableWidgetItem> // 2026/1/19 追加
+#include <QDir>
 #include <QDebug>
 #include <QString>
 #include <QTimer>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QFileDialog>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -258,16 +260,14 @@ void MainWindow::on_createButton_clicked()
         return;
     }
 
-    QString diskPath = QInputDialog::getText(
+    QString diskPath = QFileDialog::getOpenFileName(
         this,
-        "Create VM",
-        "Disk Path:",
-        QLineEdit::Normal,
-        "/home/fujisawa/yakumo-test-images/test.qcow2",
-        &okInput
+        "Select qcow2 Disk Image",
+        QDir::homePath(),
+        "QCOW2 Image (*.qcow2)"
     );
 
-    if (!okInput || diskPath.isEmpty()) {
+    if (diskPath.isEmpty()) {
         return;
     }
 
