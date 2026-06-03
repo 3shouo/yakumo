@@ -260,6 +260,7 @@ void MainWindow::on_createButton_clicked()
         return;
     }
 
+
     QString diskPath = QFileDialog::getOpenFileName(
         this,
         "Select qcow2 Disk Image",
@@ -271,11 +272,15 @@ void MainWindow::on_createButton_clicked()
         return;
     }
 
+
+    std::string errorMessage;
+
     bool ok = createVM(
         name.toStdString(),
         static_cast<unsigned int> (memoryMB),
         static_cast<unsigned int>(vcpus),
-        diskPath.toStdString()
+        diskPath.toStdString(),
+        &errorMessage
     );
 
     qDebug() << "createVM result =" << ok;
@@ -290,7 +295,7 @@ void MainWindow::on_createButton_clicked()
         QMessageBox::warning(
             this,
             "Create VM",
-            "Failed to create VM."
+            QString::fromStdString(errorMessage)
         );
     }
 

@@ -180,74 +180,89 @@ static std::string escapeXml(const std::string& text)
     return escaped;
 }
 
+// エラー文をセットするための補助関数
+static void setError(std::string* errorMessage, const std::string& message)
+{
+    if(errorMessage) {
+        *errorMessage = message;
+    }
+
+    std::cerr << message << "\n";
+}
+
 // VMの作成
 bool createVM(
     const std::string& name,
     unsigned int memoryMB,
     unsigned int vcpus,
-    const std::string& diskPath
+    const std::string& diskPath,
+    std::string* errorMessage
 )
 {
     if (name.empty()) {
-        std::cerr << "VM name is empty\n";
+        setError(errorMessage, "VM name is empty");
         return false;
     }
 
     if (!isValidVMName(name)) {
-        std::cerr << "VM name contains invalid characters\n";
+        setError(errorMessage, "VM name contains invalid characters");
         return false;
     }
 
     if (memoryMB < MIN_MEMORY_MB || memoryMB > MAX_MEMORY_MB) {
-        std::cerr << "Memory must be between "
-                  << MIN_MEMORY_MB << " amd "
-                  << MAX_MEMORY_MB << " MB\n";
+        std::ostringstream message;
+        message << "Memory must be between "
+                << MIN_MEMORY_MB << " and "
+                << MAX_MEMORY_MB << " MB";
         return false;
     }
 
     if (vcpus < MIN_VCPUS || vcpus > MAX_VCPUS) {
-        std::cerr << "vCPUs must be between "
-                  << MIN_VCPUS << " and "
-                  << MAX_VCPUS << "\n";
+        std::ostringstream message;
+        message << "vCPUs must be between "
+                << MIN_VCPUS << " and "
+                << MAX_VCPUS;
+
+        setError(errorMessage, message.str());
         return false;
     }
 
     if (diskPath.empty()) {
-        std::cerr << "Disk path is empty\n";
+        setError(errorMessage, "Disk path is empty");
         return false;
     }
 
     // VMイメージを取得するパスを絶対パスかどうかチェックする
     if (!std::filesystem::path(diskPath).is_absolute()) {
-        std::cerr << "Disk path must be absolute\n";
+        setError(errorMessage, "Disk path must be absolute");
         return false;
     }
 
     if (!std::filesystem::exists(diskPath)) {
-        std::cerr << "Disk image file does not exists\n";
+        setError(errorMessage, "Disk image file does not exists");
         return false;
     }
 
     if (!std::filesystem::is_regular_file(diskPath)) {
-        std::cerr << "Disk path is not a regular file\n";
+        setError(errorMessage, "Disk path is not a regular file");
         return false;
     }
 
     // qcow2のみを許可するためのチェック
     if (std::filesystem::path(diskPath).extension() != ".qcow2") {
-        std::cerr << "Disk image must be a qcow2 file\n";
+        setError(errorMessage, "Disk image must be a qcow2 file");
         return false;
     }
 
     LibvirtConnection conn;
     if (!conn.isValid()) {
-        std::cerr << "Failed to connect to hypervisor\n";
+        setError(errorMessage, "Failed to connect to hypervisor");
         return false;
     }
 
     virDomainPtr existingDom = virDomainLookupByName(conn.get(), name.c_str());
     if (existingDom) {
-        std::cerr << "Domain already exists\n";
+        setError(errorMessage, "Domain already exists");
         virDomainFree(existingDom);
         return false;
     }
@@ -280,7 +295,7 @@ bool createVM(
 
     virDomainPtr dom = virDomainDefineXML(conn.get(), xml.str().c_str());
     if (!dom) {
-        std::cerr << "Failed to define domain\n";
+        setError(errorMessage, "Failed to define domain");
         return false;
     }
 

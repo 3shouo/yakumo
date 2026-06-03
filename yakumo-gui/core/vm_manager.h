@@ -8,7 +8,8 @@ bool createVM(
     const std::string& name,
     unsigned int memoryMB,
     unsigned int vcpus,
-    const std::string& diskPath
+    const std::string& diskPath,
+    std::string* errorMessage = nullptr
 );
 bool startVM(const std::string& name);
 bool shutdownVM(const std::string& name);
