@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "vm_types.h" // 2026/1/19 追加
 #include "vm_manager.h" // 2026/1/19 追加
+#include "createvmdialog.h"
 
 #include <QTableWidgetItem> // 2026/1/19 追加
 #include <QDir>
@@ -9,8 +10,9 @@
 #include <QString>
 #include <QTimer>
 #include <QMessageBox>
-#include <QInputDialog>
+//#include <QInputDialog>
 #include <QFileDialog>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -215,71 +217,19 @@ void MainWindow::on_deleteButton_clicked()
 // VM作成ボタン(createButton)が押されたときの処理
 void MainWindow::on_createButton_clicked()
 {
-    bool okInput = false;
+    CreateVMDialog dialog(this);
 
-    QString name = QInputDialog::getText(
-        this,
-        "Create VM",
-        "VM name:",
-        QLineEdit::Normal,
-        "",
-        &okInput
-    );
-
-    if (!okInput || name.isEmpty()) {
+    if (dialog.exec() != QDialog::Accepted){
         return;
     }
-
-    int memoryMB = QInputDialog::getInt(
-        this,
-        "Create VM",
-        "Memory MB:",
-        2048,
-        256,
-        32768,
-        256,
-        &okInput
-    );
-
-    if (!okInput) {
-        return;
-    }
-
-    int vcpus = QInputDialog::getInt(
-        this,
-        "Create VM",
-        "vCPUs",
-        2,
-        1,
-        16,
-        1,
-        &okInput
-    );
-
-    if (!okInput) {
-        return;
-    }
-
-
-    QString diskPath = QFileDialog::getOpenFileName(
-        this,
-        "Select qcow2 Disk Image",
-        QDir::homePath(),
-        "QCOW2 Image (*.qcow2)"
-    );
-
-    if (diskPath.isEmpty()) {
-        return;
-    }
-
 
     std::string errorMessage;
 
     bool ok = createVM(
-        name.toStdString(),
-        static_cast<unsigned int> (memoryMB),
-        static_cast<unsigned int>(vcpus),
-        diskPath.toStdString(),
+        dialog.vmName().toStdString(),
+        static_cast<unsigned int>(dialog.memoryMB()),
+        static_cast<unsigned int>(dialog.vcpus()),
+        dialog.diskPath().toStdString(),
         &errorMessage
     );
 

@@ -14,6 +14,7 @@ SOURCES += \
     core/vm_repository.cpp \
     core/vm_state_converter.cpp \
     core/vm_types.cpp \
+    createvmdialog.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -24,7 +25,9 @@ HEADERS += \
     core/vm_repository.h \
     core/vm_state_converter.h \
     core/vm_types.h \
-    mainwindow.h
+    createvmdialog.h \
+    mainwindow.h \
+    createvmdialog.h
 
 LIBS += -lvirt
 
