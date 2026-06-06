@@ -3,8 +3,9 @@
 
 #include <QDialog>
 
-class QLineEdit;
 class QSpinBox;
+class QLineEdit;
+class QDialogButtonBox;
 
 class CreateVMDialog : public QDialog
 {
@@ -20,11 +21,13 @@ class CreateVMDialog : public QDialog
 
     private slots:
         void onBrowseButtonClicked();
+        void onAccepted();
 
     private:
         QLineEdit* nameEdit;
         QSpinBox* memorySpinBox;
         QSpinBox* vcpuSpinBox;
         QLineEdit* diskPathEdit;
+        QDialogButtonBox* buttonBox;
 };
 

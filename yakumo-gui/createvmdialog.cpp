@@ -10,6 +10,7 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 #include <QDir>
+#include <QMessageBox>
 
 CreateVMDialog::CreateVMDialog(QWidget *parent)
     : QDialog(parent)
@@ -17,6 +18,10 @@ CreateVMDialog::CreateVMDialog(QWidget *parent)
     , memorySpinBox(new QSpinBox(this))
     , vcpuSpinBox(new QSpinBox(this))
     , diskPathEdit(new QLineEdit(this))
+    , buttonBox(new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+        this
+    ))
 {
     setWindowTitle("Create VM");
 
@@ -39,10 +44,8 @@ CreateVMDialog::CreateVMDialog(QWidget *parent)
     formLayout->addRow("vCPUs:", vcpuSpinBox);
     formLayout->addRow("Diskimage:", diskLayout);
 
-    QDialogButtonBox* buttonBox = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-        this
-    );
+
+    buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
     mainLayout->addLayout(formLayout);
@@ -52,10 +55,12 @@ CreateVMDialog::CreateVMDialog(QWidget *parent)
             this, &CreateVMDialog::onBrowseButtonClicked);
 
     connect(buttonBox, &QDialogButtonBox::accepted,
-            this, &QDialog::accept);
+            this, &CreateVMDialog::onAccepted);
 
     connect(buttonBox, &QDialogButtonBox::rejected,
             this, &QDialog::reject);
+
+    nameEdit->setFocus();
 }
 
 QString CreateVMDialog::vmName() const
@@ -78,6 +83,8 @@ QString CreateVMDialog::diskPath() const
     return diskPathEdit->text();
 }
 
+
+// Browseボタンが押されたときに呼ばれる関数
 void CreateVMDialog::onBrowseButtonClicked()
 {
     QString fileName = QFileDialog::getOpenFileName(
@@ -89,7 +96,24 @@ void CreateVMDialog::onBrowseButtonClicked()
 
     if(!fileName.isEmpty()){
         diskPathEdit->setText(fileName);
+        buttonBox->button(QDialogButtonBox::Ok)->setFocus();
     }
+}
+
+// OKボタンが押されたときに呼ばれる関数定義
+void CreateVMDialog::onAccepted()
+{
+    if(nameEdit->text().isEmpty()){
+        QMessageBox::warning(this, "Create VM", "VM name is empty.");
+        return;
+    }
+    
+    if(diskPathEdit->text().isEmpty()){
+         QMessageBox::warning(this, "Create VM", "Disk image is not selected.");
+        return;
+    }
+
+    accept();
 }
 
 
