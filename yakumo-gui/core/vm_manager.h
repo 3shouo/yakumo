@@ -4,6 +4,11 @@
 #include <string>
 #include "vm_types.h"
 
+struct VncConsoleInfo {
+    std::string host;
+    int port;
+};
+
 bool createVM(
     const std::string& name,
     unsigned int memoryMB,
@@ -16,5 +21,6 @@ bool shutdownVM(const std::string& name);
 bool forceStopVM(const std::string& name);
 bool rebootVM(const std::string& name);
 bool deleteVM(const std::string& name);
-std::vector<VMInfo> listVMs();
+bool getVncConsoleInfo(const std::string& name, VncConsoleInfo* info, std::string* errorMessage);
 
+std::vector<VMInfo> listVMs();

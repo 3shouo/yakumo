@@ -9,6 +9,9 @@
 #include <sstream>
 #include <filesystem>
 #include <cctype>
+#include <QDomDocument>
+#include <QString>
+#include <cstdlib>
 
 static constexpr const char* LIBVIRT_URI = "qemu:///system";
 static constexpr unsigned int MIN_MEMORY_MB = 256;
@@ -190,6 +193,90 @@ static void setError(std::string* errorMessage, const std::string& message)
     std::cerr << message << "\n";
 }
 
+// VMコンソール関数
+bool getVncConsoleInfo(const std::string& name, VncConsoleInfo* info, std::string* errorMessage = nullptr)
+{
+    if(!info){
+        setError(errorMessage, "VNC console info output is null");
+        return false;
+    }
+
+    LibvirtConnection conn;
+    if(!conn.isValid()){
+        setError(errorMessage, "Failed to connect to hypervisor");
+        return false;
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());
+
+    if(!dom){
+        setError(errorMessage, "Domain not found");
+        return false;
+    }
+
+    if(virDomainIsActive(dom) != 1){
+        setError(errorMessage, "VM is not running");
+        virDomainFree(dom);
+        return false;
+    }
+
+    char* xml = virDomainGetXMLDesc(dom, 0);
+
+    if(!xml){
+        setError(errorMessage, "Failed to get domain XML");
+        virDomainFree(dom);
+        return false;
+    }
+
+    QDomDocument document;
+    QString parseError;
+    int parseLine = 0;
+    int parseColumn = 0;
+
+    bool parsed = document.setContent(QString::fromUtf8(xml), &parseError, &parseLine, &parseColumn);
+
+    free(xml);
+    virDomainFree(dom);
+
+    if(!parsed){
+        setError(errorMessage, "Failed to parse domain XML");
+        return false;
+    }
+
+    QDomNodeList graphicsNodes = document.elementsByTagName("graphics");
+
+    for (int i = 0; i < graphicsNodes.count(); ++i){
+        QDomElement graphics = graphicsNodes.at(i).toElement();
+
+        if (graphics.attribute("type") != "vnc"){
+            continue;
+        }
+
+        bool ok = false;
+        int port = graphics.attribute("port").toInt(&ok);
+
+        if (!ok || port <= 0){
+            setError(errorMessage, "VNC port is not assigned");
+            return false;
+        }
+
+        QString host = graphics.attribute("listen");
+
+        if(host.isEmpty()){
+            host = "127.0.0.1";
+        }
+
+        info->host = host.toStdString();
+        info->port = port;
+
+        return true;
+    }
+
+    setError(errorMessage, "VNC graphics device was not found");
+    return false;
+}
+
+
 // VMの作成
 bool createVM(
     const std::string& name,
@@ -214,6 +301,8 @@ bool createVM(
         message << "Memory must be between "
                 << MIN_MEMORY_MB << " and "
                 << MAX_MEMORY_MB << " MB";
+
+        setError(errorMessage, message.str());
         return false;
     }
 
@@ -289,6 +378,11 @@ bool createVM(
         << "<source network='default'/>"
         << "<model type='virtio'/>"
         << "</interface>"
+        << "<graphics type='vnc' port='-1', autport='yes', listen='127.0.0.1'/>"
+        << "<video>"
+        << "<model type='virtio'/>"
+        << "</video>"
+        << "<input type='table' bus='usb'/>"
         << "<console type='pty'/>"
         << "</devices>"
         << "</domain>";

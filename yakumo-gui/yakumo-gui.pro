@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui network xml
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -15,6 +15,8 @@ SOURCES += \
     core/vm_state_converter.cpp \
     core/vm_types.cpp \
     createvmdialog.cpp \
+    vncconsoledialog.cpp \
+    vncwidget.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -26,8 +28,9 @@ HEADERS += \
     core/vm_state_converter.h \
     core/vm_types.h \
     createvmdialog.h \
+    vncconsoledialog.h \
+    vncwidget.h \
     mainwindow.h \
-    createvmdialog.h
 
 LIBS += -lvirt
 
