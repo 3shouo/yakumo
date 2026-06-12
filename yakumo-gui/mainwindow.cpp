@@ -3,6 +3,7 @@
 #include "vm_types.h" // 2026/1/19 追加
 #include "vm_manager.h" // 2026/1/19 追加
 #include "createvmdialog.h"
+#include "vncconsoledialog.h"
 
 #include <QTableWidgetItem> // 2026/1/19 追加
 #include <QDir>
@@ -251,4 +252,27 @@ void MainWindow::on_createButton_clicked()
 
     std::vector<VMInfo> vms = listVMs();
     updateTable(vms);
+}
+
+// Consoleボタンが押されたときの処理
+void MainWindow::on_consoleButton_clicked()
+{
+    int row = ui->vmTable->currentRow();
+
+    if (row < 0){
+        QMessageBox::warning(this, "Console", "Please select a VM.");
+        return;
+    }
+
+    QTableWidgetItem* nameItem = ui->vmTable->item(row, 0);
+
+    if (!nameItem){
+        QMessageBox::warning(this, "Console", "VM name was not found.");
+        return;
+    }
+
+    QString name = nameItem->text();
+
+    VncConsoleDialog dialog(name, this);
+    dialog.exec();
 }

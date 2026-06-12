@@ -122,7 +122,7 @@ void VncWidget::processBuffer()
             }
 
             socket.write(QByteArray(1, static_cast<char>(1)));
-            state = State::WaitServerInit;
+            state = State::WaitSecurityResult;
         } else if (state == State::WaitSecurityResult){
             if (buffer.size() < 4){
                 return;
@@ -185,8 +185,8 @@ void VncWidget::processBuffer()
             socket.write(pixelFormat);
 
             QByteArray encodings;
-            pixelFormat.append(static_cast<char>(2));
-            pixelFormat.append(3, static_cast<char>(0));
+            encodings.append(static_cast<char>(2));
+            encodings.append(static_cast<char>(0));
             appendU16(encodings, 1);
             appendU32(encodings, 0);
             socket.write(encodings);

@@ -33,6 +33,7 @@ private slots:
     void on_forceStopButton_clicked();
     void on_deleteButton_clicked();
     void on_createButton_clicked();
+    void on_consoleButton_clicked();
     void on_vmTable_cellClicked(int row, int column);
 };
 #endif // MAINWINDOW_H

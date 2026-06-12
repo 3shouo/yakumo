@@ -59,7 +59,7 @@
      <rect>
       <x>20</x>
       <y>300</y>
-      <width>551</width>
+      <width>641</width>
       <height>45</height>
      </rect>
     </property>
@@ -105,6 +105,13 @@
         <widget class="QPushButton" name="createButton">
          <property name="text">
           <string>Create VM</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="consoleButton">
+         <property name="text">
+          <string>Console</string>
          </property>
         </widget>
        </item>
