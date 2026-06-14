@@ -3,7 +3,10 @@
 
 #include <QMainWindow>
 #include <vector>
-#include "vm_types.h" // 2026/1/19 追加
+#include <QString>
+#include <functional>
+
+#include "vm_types.h" 
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -22,9 +25,11 @@ public:
 private:
     Ui::MainWindow *ui;
 
-    void updateTable(const std::vector<VMInfo>& vms); // 2026/1/19 追加
+    void updateTable(const std::vector<VMInfo>& vms);
     void updateDetail(const VMInfo& vm);
     void clearDetail();
+    QString selectedVMName() const;
+    void runVMAction(const QString& actionLabel, const std::function<bool(const std::string&)>& action);
 
 private slots:
     void on_startButton_clicked();

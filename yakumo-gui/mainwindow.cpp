@@ -1,11 +1,11 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "vm_types.h" // 2026/1/19 追加
-#include "vm_manager.h" // 2026/1/19 追加
+#include "vm_types.h"
+#include "vm_manager.h"
 #include "createvmdialog.h"
 #include "vncconsoledialog.h"
 
-#include <QTableWidgetItem> // 2026/1/19 追加
+#include <QTableWidgetItem>
 #include <QDir>
 #include <QDebug>
 #include <QString>
@@ -13,6 +13,7 @@
 #include <QMessageBox>
 //#include <QInputDialog>
 #include <QFileDialog>
+#include <functional>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -23,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // VM一覧取得
     std::vector<VMInfo> vms = listVMs();
-    updateTable(vms);     // 2026/1/19 追加
+    updateTable(vms);
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [this](){
         qDebug() << "timer fired";
@@ -38,9 +39,15 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::updateTable(const std::vector<VMInfo>& vms) // 2026/1/19 追加
+void MainWindow::updateTable(const std::vector<VMInfo>& vms)
 {
     qDebug() << "updateTable called. size =" << vms.size();
+
+    QString selectedName;
+    int currentRow = ui->vmTable->currentRow();
+    if (currentRow >= 0 && ui->vmTable->item(currentRow, 0)){
+        selectedName = ui->vmTable->item(currentRow, 0)->text();
+    }
 
     ui->vmTable->clearContents();
     ui->vmTable->setRowCount(static_cast<int>(vms.size()));
@@ -52,37 +59,34 @@ void MainWindow::updateTable(const std::vector<VMInfo>& vms) // 2026/1/19 追加
         QTableWidgetItem* stateItem = new QTableWidgetItem(stateToString(vm.state));
         ui->vmTable->setItem(row, 1, stateItem);
 
-        if (vm.state == VMState::Running)
-        {
+        if (vm.state == VMState::Running){
             stateItem->setBackground((Qt::green));
-        }
-        else if (vm.state == VMState::Shutoff)
-        {
+        }else if (vm.state == VMState::Shutoff){
             stateItem->setBackground((Qt::lightGray));
-        }
-        else if (vm.state == VMState::Paused)
-        {
+        }else if (vm.state == VMState::Paused){
             stateItem->setBackground((Qt::yellow));
-        }
-        else
-        {
+        }else{
             stateItem->setBackground((Qt::red));
         }
         ui->vmTable->setItem(row, 2, new QTableWidgetItem(QString::number(vm.memoryMB) + " MB"));
     }
     ui->vmTable->resizeColumnsToContents();
 
-    if (!vms.empty()) {
-        ui->vmTable->selectRow(0);
-        updateDetail(vms[0]);
-    } else {
+    if (vms.empty()) {
         clearDetail();
+        return;
     }
 
-    if (ui->vmTable->rowCount() > 0)
-    {
-        ui->vmTable->selectRow(0);
+    int rowToSelect = 0;
+    for (int row = 0; row < static_cast<int>(vms.size()); ++row){
+        if (QString::fromStdString(vms[row].name) == selectedName){
+            rowToSelect = row;
+            break;
+        }
     }
+
+    ui->vmTable->selectRow(rowToSelect);
+    updateDetail(vms[rowToSelect]);
 }
 
 void MainWindow::updateDetail(const VMInfo &vm)
@@ -103,6 +107,38 @@ void MainWindow::clearDetail()
     ui->detailActiveValue->setText("-");
 }
 
+// テーブルで選択中の行からVM名を取り出すヘルパー
+QString MainWindow::selectedVMName() const
+{
+    int row = ui->vmTable->currentRow();
+    if (row < 0)
+        return QString();
+
+    QTableWidgetItem* item = ui->vmTable->item(row, 0);
+
+    if (!item)
+        return QString();
+
+    return item->text();
+}
+
+// VM操作ボタン共通の処理本体
+void MainWindow::runVMAction(const QString& actionLabel, const std::function<bool(const std::string&)>& action)
+{
+    QString name = selectedVMName();
+    if (name.isEmpty())
+        return;
+
+    qDebug() << actionLabel << "row =" << ui->vmTable->currentRow();
+
+    if (!action(name.toStdString())){
+        QMessageBox::warning(this, actionLabel + "failed", QString("Failed to %1 VM '%2'.").arg(actionLabel.toLower(), name));
+    }
+
+    updateTable(listVMs());
+}
+
+
 void MainWindow::on_vmTable_cellClicked(int row, int column)
 {
     Q_UNUSED(column);
@@ -120,65 +156,22 @@ void MainWindow::on_vmTable_cellClicked(int row, int column)
 
 void MainWindow::on_startButton_clicked()
 {
-    qDebug() << "row =" << ui->vmTable->currentRow();
-
-    int row = ui->vmTable->currentRow();
-
-    if(row < 0)
-        return;
-
-    QString name = ui->vmTable->item(row, 0)->text();
-
-    startVM(name.toStdString());
-
-    std::vector<VMInfo> vms = listVMs();
-    updateTable(vms);
+    runVMAction("Start", startVM);
 }
 
 void MainWindow::on_shutdownButton_clicked()
 {
-    qDebug() << "row =" << ui->vmTable->currentRow();
-
-    int row = ui->vmTable->currentRow();
-    if (row < 0)
-        return;
-
-    QString name = ui->vmTable->item(row, 0)->text();
-
-    shutdownVM(name.toStdString());
-
-    std::vector<VMInfo> vms = listVMs();
-    updateTable(vms);
+    runVMAction("Shutdown", shutdownVM);
 }
 
 void MainWindow::on_rebootButton_clicked()
 {
-    qDebug() << "row =" << ui->vmTable->currentRow();
-
-    int row = ui->vmTable->currentRow();
-    if (row < 0) return;
-
-    QString name = ui->vmTable->item(row, 0)->text();
-
-    rebootVM(name.toStdString());
-
-    std::vector<VMInfo> vms = listVMs();
-    updateTable(vms);
+    runVMAction("Reboot", rebootVM);
 }
 
 void MainWindow::on_forceStopButton_clicked()
 {
-    qDebug() << "row =" << ui->vmTable->currentRow();
-
-    int row = ui->vmTable->currentRow();
-    if (row < 0) return;
-
-    QString name = ui->vmTable->item(row, 0)->text();
-
-    forceStopVM(name.toStdString());
-
-    std::vector<VMInfo> vms = listVMs();
-    updateTable(vms);
+    runVMAction("Forcestop", forceStopVM);
 }
 
 void MainWindow::on_deleteButton_clicked()

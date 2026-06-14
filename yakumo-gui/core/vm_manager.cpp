@@ -384,7 +384,7 @@ bool createVM(
         << "<video>"
         << "<model type='virtio'/>"
         << "</video>"
-        << "<input type='table' bus='usb'/>"
+        << "<input type='tablet' bus='usb'/>"
         << "<console type='pty'/>"
         << "</devices>"
         << "</domain>";
