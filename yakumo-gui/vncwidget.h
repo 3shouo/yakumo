@@ -43,6 +43,7 @@ class VncWidget : public QWidget
         State state = State::WaitProtocolVersion;
         int framebufferWidth = 0;
         int framebufferHeight = 0;
+        bool needFullUpdate = false;
         QString statusText = "Not connected";
 
 };

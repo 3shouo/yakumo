@@ -184,12 +184,22 @@ void VncWidget::processBuffer()
             pixelFormat.append(3, static_cast<char>(0));
             socket.write(pixelFormat);
 
+
+            QByteArray encodings;
+            encodings.append(static_cast<char>(2));
+            encodings.append(static_cast<char>(0));
+            appendU16(encodings, 2);
+            appendU32(encodings, 0);
+            appendU32(encodings, 0xFFFFFF21u); 
+            socket.write(encodings);
+            /*
             QByteArray encodings;
             encodings.append(static_cast<char>(2));
             encodings.append(static_cast<char>(0));
             appendU16(encodings, 1);
             appendU32(encodings, 0);
             socket.write(encodings);
+            */
 
             state = State::WaitFramebufferUpdate;
             requestFramebufferUpdate(false);
@@ -222,6 +232,16 @@ void VncWidget::processBuffer()
                 quint32 encoding = readU32(buffer.constData() + offset + 8);
                 offset += 12;
 
+                if (encoding == 0xFFFFFF21u){
+                    framebufferWidth = w;
+                    framebufferHeight = h;
+                    QImage resized(w, h, QImage::Format_RGB32);
+                    resized.fill(Qt::black);
+                    framebuffer = resized;
+                    needFullUpdate = true;
+                    continue;
+                }
+                
                 if (encoding != 0){
                     statusText = "Unsupported VNS encoding";
                     update();
@@ -231,6 +251,11 @@ void VncWidget::processBuffer()
                 int bytes = w * h * 4;
                 if (buffer.size() < offset + bytes){
                     return;
+                }
+
+                if (x < 0 || y < 0 || x + w > framebuffer.width() || y + h > framebuffer.height()){
+                    offset += bytes;
+                    continue;
                 }
 
                 const uchar* src = reinterpret_cast<const uchar*>(buffer.constData() + offset);
@@ -252,7 +277,13 @@ void VncWidget::processBuffer()
 
             buffer.remove(0, offset);
             update();
+            requestFramebufferUpdate(!needFullUpdate);
+            needFullUpdate = false;
+            /*
+            buffer.remove(0, offset);
+            update();
             requestFramebufferUpdate(true);
+            */
         }
     }
 }
