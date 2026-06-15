@@ -8,6 +8,7 @@
 #include <QThread>
 #include <sstream>
 #include <filesystem>
+#include <fstream>
 #include <cctype>
 #include <QDomDocument>
 #include <QString>
@@ -18,6 +19,30 @@ static constexpr unsigned int MIN_MEMORY_MB = 256;
 static constexpr unsigned int MAX_MEMORY_MB = 32768;
 static constexpr unsigned int MIN_VCPUS = 1;
 static constexpr unsigned int MAX_VCPUS = 16;
+
+// ファイル先頭のマジックナンバーでqcow2形式かどうかを判定する
+static bool isQcow2File(const std::string& path)
+{
+    // バイナリモードでファイルを開く
+    std::ifstream file(path, std::ios::binary);
+    if (!file){
+        return false;
+    }
+
+    // 先頭4バイトを読み込む
+    unsigned char magic[4] = {0};
+    file.read(reinterpret_cast<char*>(magic), 4);
+    if (file.gcount() != 4){
+        return false;
+    }
+
+    // qcow2 のマジックナンバーは "QFI\xFB" (0x51 0x46 0x49 0xFB)
+    return magic[0] == 0x51 &&
+           magic[1] == 0x46 &&
+           magic[2] == 0x49 &&
+           magic[3] == 0xFB;
+}
+
 
 // VMの起動
 bool startVM(const std::string& name)
@@ -337,8 +362,8 @@ bool createVM(
         return false;
     }
 
-    // qcow2のみを許可するためのチェック
-    if (std::filesystem::path(diskPath).extension() != ".qcow2") {
+    // 拡張子ではなくファイルの中身(マジックナンバー)で qcow2 かどうかを判定する
+    if (!isQcow2File(diskPath)) {
         setError(errorMessage, "Disk image must be a qcow2 file");
         return false;
     }
