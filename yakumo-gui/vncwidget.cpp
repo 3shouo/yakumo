@@ -4,11 +4,13 @@
 
 #include <QColor>
 #include <QPainter>
+#include <QKeyEvent>
 
 VncWidget::VncWidget(QWidget* parent)
     : QWidget(parent)
 {
         setMinimumSize(640, 480);
+        setFocusPolicy(Qt::StrongFocus);
         
         connect(&socket, &QTcpSocket::connected, this, &VncWidget::onConnected);
 
@@ -287,6 +289,133 @@ void VncWidget::processBuffer()
         }
     }
 }
+
+// キーボードイベント（種別4）をサーバへ送る
+void VncWidget::sendKeyEvent(quint32 keysym, bool down)
+{
+    if (state != State::WaitFramebufferUpdate){
+        return;
+    }
+    if (keysym == 0){
+        return;
+    }
+
+    QByteArray message;
+    message.append(static_cast<char>(4));
+    message.append(static_cast<char>(down ? 1 : 0));
+    message.append(static_cast<char>(0));
+    message.append(static_cast<char>(0));
+    message.append(static_cast<char>((keysym >> 24) & 0xff));
+    message.append(static_cast<char>((keysym >> 16) & 0xff));
+    message.append(static_cast<char>((keysym >> 8) & 0xff));
+    message.append(static_cast<char>(keysym & 0xff));
+
+    socket.write(message);
+}
+
+// Qtのキー情報をX11のkeysymへ変換する
+quint32 VncWidget::mapQtKeyToKeysym(QKeyEvent* event) const
+{
+    switch (event->key())
+    {
+    case Qt::Key_Backspace: return 0xff08;
+    case Qt::Key_Tab:       return 0xFF09;
+    case Qt::Key_Return:
+    case Qt::Key_Enter:     return 0xFF0D;
+    case Qt::Key_Escape:    return 0xFF1B;
+    case Qt::Key_Delete:    return 0xFFFF;
+    case Qt::Key_Home:      return 0xFF50;
+    case Qt::Key_Left:      return 0xFF51;
+    case Qt::Key_Up:        return 0xFF52;
+    case Qt::Key_Right:     return 0xFF53;
+    case Qt::Key_Down:      return 0xFF54;
+    case Qt::Key_PageUp:    return 0xFF55;
+    case Qt::Key_PageDown:  return 0xFF56;
+    case Qt::Key_End:       return 0xFF57;
+    /*case Qt::Key_Shift:     return 0xFFE1;*/
+    case Qt::Key_Control:   return 0xFFE3;
+    case Qt::Key_Alt:       return 0xFFE9;
+    default: break;
+    }
+
+    if (event->key() >= Qt::Key_F1 && event->key() <= Qt::Key_F12){
+        return 0xFFBE + (event->key() - Qt::Key_F1);
+    }
+
+    QString text = event->text();
+
+    if (!text.isEmpty() && text.at(0).unicode() >= 0x20 && text.at(0).unicode() != 0x7f){
+        return text.at(0).unicode();
+    }
+
+    if (event->key() >= Qt::Key_A && event->key() <= Qt::Key_Z){
+        return 0x61 + (event->key() - Qt::Key_A);
+    }
+
+    return 0;
+}
+
+// US配列で、その文字を出すのに Shift が要るか判定する
+static bool keysymNeedsShift(quint32 keysym)
+{
+    // 大文字 A~Z は Shift が必要
+    if (keysym >= 'A' && keysym <= 'Z') {
+        return true;
+    }
+
+    // US配列で Shift を要する記号
+    switch (keysym) {
+        case '~': case '!': case '@': case '#': case '$':
+        case '%': case '^': case '&': case '*': case '(':
+        case ')': case '_': case '+': case '{': case '}':
+        case '|': case ':': case '"': case '<': case '>':
+        case '?':
+            return true;
+        default:
+            return false;
+    }
+}
+
+// キーが押されたときの処理
+void VncWidget::keyPressEvent(QKeyEvent* event)
+{
+    int key = event->key();
+
+    // Ctrl/Alt は押下状態を保持する必要があるのでdownだけ送って戻る
+    if (key == Qt::Key_Control || key == Qt::Key_Alt){
+        sendKeyEvent(mapQtKeyToKeysym(event), true);
+        return;
+    }
+
+    quint32 keysym = mapQtKeyToKeysym(event);
+    if (keysym == 0) {
+        return;
+    }
+    
+    // Shiftを押している間は、対象キーをshiftで挟んで送る（記号対象）
+    bool  shift = keysymNeedsShift(keysym);
+    if (shift) {
+        sendKeyEvent(0xFFE1, true);
+    }
+    sendKeyEvent(keysym, true);
+    sendKeyEvent(keysym, false);
+
+    if (shift) {
+        sendKeyEvent(0xFFE1, false);
+    }
+}
+
+// キーが離されたときの処理
+void VncWidget::keyReleaseEvent(QKeyEvent* event)
+{
+    int key = event->key();
+
+    // Ctrl/Alt の離しだけ送る（他のキーは押下時に down/up を送りきっている）
+    if (key == Qt::Key_Control || key == Qt::Key_Alt) {
+        sendKeyEvent(mapQtKeyToKeysym(event), false);
+    }
+}
+
 
 quint16 VncWidget::readU16(const char* data) const
 {

@@ -17,6 +17,8 @@ class VncWidget : public QWidget
 
     protected:
         void paintEvent(QPaintEvent* event) override;
+        void keyPressEvent(QKeyEvent* event) override;
+        void keyReleaseEvent(QKeyEvent* event) override;
 
     private slots:
         void onConnected();
@@ -34,8 +36,10 @@ class VncWidget : public QWidget
 
         void processBuffer();
         void requestFramebufferUpdate(bool incremental);
+        void sendKeyEvent(quint32 keysym, bool down);
         quint16 readU16(const char* data) const;
         quint32 readU32(const char* data) const;
+        quint32 mapQtKeyToKeysym(QKeyEvent* event) const;
 
         QTcpSocket socket;
         QByteArray buffer;
