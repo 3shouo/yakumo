@@ -22,3 +22,14 @@ struct VMInfo {
 };
 
 QString stateToString(VMState state);
+
+/* スナップショット情報 */
+struct SnapshotInfo {
+	std::string name;			// スナップショット名
+	std::string description;	// 説明（無ければ空文字）
+	std::string parent;			// 親スナップショット名（無ければ空文字）
+	std::string state;			// 作成時のVM状態（"running" / "shutoff" など）
+	long long 	creationTime;		// 作成時刻（UNIXエポック秒）
+	bool      	isCurrent;		// current（現在地）かどうか
+};
+

@@ -3,6 +3,7 @@
 #include "vm_types.h"
 #include "vm_manager.h"
 #include "createvmdialog.h"
+#include "snapshotdialog.h"
 #include "vncconsoledialog.h"
 
 #include <QTableWidgetItem>
@@ -268,4 +269,28 @@ void MainWindow::on_consoleButton_clicked()
 
     VncConsoleDialog dialog(name, this);
     dialog.exec();
+}
+
+
+// Snapshotボタンが押されたときの処理
+void MainWindow::on_snapshotButton_clicked()
+{
+    int row = ui->vmTable->currentRow();
+
+    if (row < 0) {
+        QMessageBox::warning(this, "Snapshot", "Please select a VM.");
+        return;
+    }
+
+    QTableWidgetItem* nameItem = ui->vmTable->item(row, 0);
+
+    if (!nameItem) {
+        QMessageBox::warning(this, "snapshot", "VM name was not found.");
+        return;
+    }
+
+    QString name = nameItem->text();
+
+    SnapshotDialog dialog(name, this);  // 選択中VM名を渡して生成
+    dialog.exec();                      // モーダル表示（閉じるまでブロック）
 }

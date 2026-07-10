@@ -115,6 +115,13 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QPushButton" name="snapshotButton">
+         <property name="text">
+          <string>Snapshot</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
     </layout>
