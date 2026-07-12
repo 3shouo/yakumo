@@ -237,7 +237,9 @@ bool deleteSnapshot(
         return false;
     }
 
-    // flags=0：このスナップショット単体を削除（子があると失敗）
+    // flags=0：このスナップショットを削除する。
+    // 内部スナップショットでは子があっても、子を親側へ付け替え（reparent）して削除は成功する。
+    // 子ごと消したい場合は VIR_DOMAIN_SNAPSHOT_DELETE_CHILDREN を指定する
     int ret = virDomainSnapshotDelete(snap, 0);
 
     virDomainSnapshotFree(snap);
