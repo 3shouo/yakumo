@@ -195,13 +195,14 @@ void MainWindow::on_deleteButton_clicked()
         return;
     }
 
-    bool ok = deleteVM(name.toStdString());
+    std::string errorMessage;
+    bool ok = deleteVM(name.toStdString(), &errorMessage);
 
     if (!ok) {
         QMessageBox::warning(
             this,
             "Delete failed",
-            "Delete failed.\nMake sure the VM is shutoff before deleting."
+            QString::fromStdString(errorMessage)
             );
     }
 

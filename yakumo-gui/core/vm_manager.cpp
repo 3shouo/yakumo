@@ -4,6 +4,7 @@
 #include "vm_state_converter.h"
 
 #include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
 #include <iostream>
 #include <QThread>
 #include <sstream>
@@ -19,6 +20,9 @@ static constexpr unsigned int MIN_MEMORY_MB = 256;
 static constexpr unsigned int MAX_MEMORY_MB = 32768;
 static constexpr unsigned int MIN_VCPUS = 1;
 static constexpr unsigned int MAX_VCPUS = 16;
+
+// エラー文をセットする補助関数（定義はファイル後半にあるため）
+static void setError(std::string* errorMessage, const std::string& message);
 
 // ファイル先頭のマジックナンバーでqcow2形式かどうかを判定する
 static bool isQcow2File(const std::string& path)
@@ -132,28 +136,43 @@ bool forceStopVM(const std::string &name)
 }
 
 // 停止中のVMだけを削除する（VM定義を外す）
-bool deleteVM(const std::string &name)
+bool deleteVM(const std::string &name, std::string* errorMessage)
 {
     LibvirtConnection conn;
     if (!conn.isValid()){
-        std::cerr << "Failed to connect to hypervisor\n";
+        setError(errorMessage, "Failed to connect to hypervisor");
         return false;
     }
 
     virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());
     if(!dom) {
-        std::cerr << "Domain not found\n";
+        setError(errorMessage, "Domain not found");
         return false;
     }
 
     // 起動中はVMを削除しない
     if (virDomainIsActive(dom) == 1) {
-        std::cerr << "Cannot delete a running domain\n";
+        setError(errorMessage, "Cannot delete a running VM. Shut it down first.");
+        virDomainFree(dom);
+        return false;
+    }
+
+    // スナップショットが残っていると undefine が失敗するので、件数を数えて先に知らせる
+    int snapshotCount = virDomainSnapshotNum(dom, 0);
+    if (snapshotCount > 0) {
+        std::ostringstream message;
+        message << "Cannot delete: " << snapshotCount << " snapshot(s) still exist. Delete the snapshots first.";
+        setError(errorMessage, message.str());
         virDomainFree(dom);
         return false;
     }
 
     int ret = virDomainUndefine(dom);
+    if (ret != 0) {
+        // 想定外の失敗はlibvirtが返したエラー文をそのまま伝える
+        std::string reason = virGetLastErrorMessage();
+        setError(errorMessage, "Failed to undefine domain: " + reason);
+    }
 
     virDomainFree(dom);
     return ret == 0;
