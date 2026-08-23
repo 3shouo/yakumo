@@ -71,3 +71,15 @@ core.*
 .codex/
 .codex
 
+
+# ================
+# qmake / in-source build
+# ================
+.qmake.stash
+moc_predefs.h
+/yakumo-gui/yakumo-gui
+
+# ================
+# Claude Code (個人用の指示書)
+# ================
+/CLAUDE.md
