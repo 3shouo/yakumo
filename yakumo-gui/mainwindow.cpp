@@ -15,6 +15,7 @@
 //#include <QInputDialog>
 #include <QFileDialog>
 #include <functional>
+#include <QRandomGenerator>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -26,13 +27,25 @@ MainWindow::MainWindow(QWidget *parent)
     // VM一覧取得
     std::vector<VMInfo> vms = listVMs();
     updateTable(vms);
+
+    // 状態更新の間隔（80秒±10秒 → 70〜90秒）
+    constexpr int kUpdateMinMs = 70 * 1000;
+    constexpr int kUpdateMaxMs = 90 * 1000;
+
+    // 次回の更新間隔をランダムに決めるヘルパー
+    auto nextInterval = []() {
+        return QRandomGenerator::global()->bounded(kUpdateMinMs, kUpdateMaxMs + 1);
+    };
+
     QTimer *timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, [this](){
+    timer->setSingleShot(true);         // 繰り返しではなく1回だけ発火するモード
+    connect(timer, &QTimer::timeout, this, [this, timer, nextInterval](){
         qDebug() << "timer fired";
         std::vector<VMInfo> vms = listVMs();
         updateTable(vms);
+        timer->start(nextInterval());   // 毎回新しいランダム間隔で再スタート
     });
-    timer->start(3000);
+    timer->start(nextInterval());
 }
 
 MainWindow::~MainWindow()
