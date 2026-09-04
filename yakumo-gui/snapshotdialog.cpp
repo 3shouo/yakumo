@@ -1,6 +1,6 @@
 
 #include "snapshotdialog.h"
-#include "snapshot_manager.h"
+#include "vm_service.h"
 
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -15,8 +15,9 @@
 #include <QStringList>
 #include <vector>
 
-SnapshotDialog::SnapshotDialog(const QString& vmName, QWidget* parent)
+SnapshotDialog::SnapshotDialog(IVMService& service, const QString& vmName, QWidget* parent)
     : QDialog(parent)
+    , service_(service)
     , vmName_(vmName)
     , table_(new QTableWidget(this))
     , createButton_(new QPushButton("Create", this))
@@ -61,11 +62,11 @@ SnapshotDialog::SnapshotDialog(const QString& vmName, QWidget* parent)
 // 一覧の取得と描画を行う
 void SnapshotDialog::refresh()
 {
-    std::string errorMessage;
-    std::vector<SnapshotInfo> snaps = listSnapshots(vmName_.toStdString(), &errorMessage);
+    std::vector<SnapshotInfo> snaps;
+    VMResult result = service_.listSnapshots(vmName_.toStdString(), &snaps);
 
-    if (!errorMessage.empty()) {
-        QMessageBox::warning(this, "Snapshots", QString::fromStdString(errorMessage));
+    if (!result.ok) {
+        QMessageBox::warning(this, "Snapshots", QString::fromStdString(result.message));
     }
 
     table_->setRowCount(static_cast<int>(snaps.size()));
@@ -115,12 +116,21 @@ void SnapshotDialog::onCreateClicked()
         return;             // キャンセル or 空入力
     }
 
+    /*
     std::string errorMessage;
     bool created = createSnapshot(vmName_.toStdString(), name.toStdString(), "", &errorMessage);
 
     if (!created) {
         QMessageBox::warning(this, "Create Snapshot", QString::fromStdString(errorMessage));
     }
+    */
+
+    VMResult result = service_.createSnapshot(vmName_.toStdString(), name.toStdString(), "");
+
+    if (!result.ok) {
+        QMessageBox::warning(this, "Create Snapshot", QString::fromStdString(result.message));
+    }
+
     refresh();              // 成否に関わらず最新化
 }
 
@@ -140,12 +150,21 @@ void SnapshotDialog::onRevertClicked()
         return;
     }
 
+    /*
     std::string errorMessage;
     bool ok = revertSnapshot(vmName_.toStdString(), name.toStdString(), &errorMessage);
 
     if (!ok) {
         QMessageBox::warning(this, "Revert Snapshot", QString::fromStdString(errorMessage));
     }
+        */
+
+    VMResult result =service_.revertSnapshot(vmName_.toStdString(), name.toStdString());
+
+    if (!result.ok) {
+        QMessageBox::warning(this, "Revert Snapshot", QString::fromStdString(result.message));
+    }
+
     refresh();
 }
 
@@ -165,12 +184,21 @@ void SnapshotDialog::onDeleteClicked()
         return;
     }
 
+    /*
     std::string errorMessage;
     bool ok = deleteSnapshot(vmName_.toStdString(), name.toStdString(), &errorMessage);
 
     if (!ok) {
         QMessageBox::warning(this, "Delete Snapshot", QString::fromStdString(errorMessage));
     }
+    */
+
+    VMResult result = service_.deleteSnapshot(vmName_.toStdString(), name.toStdString());
+
+    if (!result.ok) {
+        QMessageBox::warning(this, "Delete Snapshot", QString::fromStdString(result.message));
+    }
+
     refresh();
 }
 

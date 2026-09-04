@@ -293,7 +293,7 @@ void MainWindow::on_consoleButton_clicked()
 
     QString name = nameItem->text();
 
-    VncConsoleDialog dialog(name, this);
+    VncConsoleDialog dialog(service_, name, this);
     dialog.exec();
 }
 
@@ -317,6 +317,6 @@ void MainWindow::on_snapshotButton_clicked()
 
     QString name = nameItem->text();
 
-    SnapshotDialog dialog(name, this);  // 選択中VM名を渡して生成
-    dialog.exec();                      // モーダル表示（閉じるまでブロック）
+    SnapshotDialog dialog(service_, name, this);  // 選択中VM名を渡して生成
+    dialog.exec();                                // モーダル表示（閉じるまでブロック）
 }

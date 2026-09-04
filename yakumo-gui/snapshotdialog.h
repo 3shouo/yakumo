@@ -7,13 +7,14 @@
 //　前方宣言（ヘッダでは型名だけわかればよい＝コンパイル高速化）
 class QTableWidget;
 class QPushButton;
+class IVMService;
 
 class SnapshotDialog : public QDialog
 {
     Q_OBJECT
 
     public:
-        explicit SnapshotDialog(const QString& vmName, QWidget* parent = nullptr);
+        explicit SnapshotDialog(IVMService& service, const QString& vmName, QWidget* parent = nullptr);
 
     private slots:
         void onCreateClicked();
@@ -24,6 +25,7 @@ class SnapshotDialog : public QDialog
         void refresh();                         // 一覧を取り直してテーブルへ反映
         QString selectedSnapshotName() const;   // 選択行のスナップショット名
 
+        IVMService&   service_;                 // コアへの入口
         QString       vmName_;                  // 対象VM名
         QTableWidget* table_;                   // 一覧テーブル
         QPushButton*  createButton_;

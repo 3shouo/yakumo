@@ -1,13 +1,13 @@
 
 #include "vncconsoledialog.h"
 #include "vncwidget.h"
-#include "vm_manager.h"
+#include "vm_service.h"
 
 #include <QMessageBox>
 #include <QTimer>
 #include <QVBoxLayout>
 
-VncConsoleDialog::VncConsoleDialog(const QString& vmName, QWidget* parent)
+VncConsoleDialog::VncConsoleDialog(IVMService& service, const QString& vmName, QWidget* parent)
     : QDialog(parent)
     , vncWidget(new VncWidget(this))
 {
@@ -19,6 +19,17 @@ VncConsoleDialog::VncConsoleDialog(const QString& vmName, QWidget* parent)
     layout->addWidget(vncWidget);
 
     VncConsoleInfo info;
+    VMResult result = service.getVncConsoleInfo(vmName.toStdString(), &info);
+
+    if (!result.ok) {
+        QMessageBox::warning(this, "Console", QString::fromStdString(result.message));
+
+        QTimer::singleShot(0, this, &QDialog::reject);
+
+        return;
+    }
+
+    /*
     std::string errorMessage;
 
     bool ok = getVncConsoleInfo(vmName.toStdString(), &info, &errorMessage);
@@ -30,6 +41,7 @@ VncConsoleDialog::VncConsoleDialog(const QString& vmName, QWidget* parent)
 
         return;
     }
+        */
 
     vncWidget->connectToVnc(QString::fromStdString(info.host), info.port);
 }
