@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "vm_types.h"
-#include "vm_manager.h"
 #include "createvmdialog.h"
 #include "snapshotdialog.h"
 #include "vncconsoledialog.h"
@@ -12,20 +11,20 @@
 #include <QString>
 #include <QTimer>
 #include <QMessageBox>
-//#include <QInputDialog>
 #include <QFileDialog>
 #include <functional>
 #include <QRandomGenerator>
 
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(IVMService& service, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , service_(service)
 {
     ui->setupUi(this);
 
     // VM一覧取得
-    std::vector<VMInfo> vms = listVMs();
+    std::vector<VMInfo> vms = fetchVMs();
     updateTable(vms);
 
     // 状態更新の間隔（80秒±10秒 → 70〜90秒）
@@ -41,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     timer->setSingleShot(true);         // 繰り返しではなく1回だけ発火するモード
     connect(timer, &QTimer::timeout, this, [this, timer, nextInterval](){
         qDebug() << "timer fired";
-        std::vector<VMInfo> vms = listVMs();
+        std::vector<VMInfo> vms = fetchVMs();
         updateTable(vms);
         timer->start(nextInterval());   // 毎回新しいランダム間隔で再スタート
     });
@@ -51,6 +50,17 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+// コアからVM一覧を取得するヘルパー（失敗時は空の一覧を返す）
+std::vector<VMInfo> MainWindow::fetchVMs()
+{
+    std::vector<VMInfo> vms;                        // 出力先の入れ物
+    VMResult result = service_.listVMs(&vms);       // インターフェース経由で取得
+    if(!result.ok) {
+        qDebug() << "listVMs failed : " << QString::fromStdString(result.message);
+    }
+    return vms;
 }
 
 void MainWindow::updateTable(const std::vector<VMInfo>& vms)
@@ -137,7 +147,7 @@ QString MainWindow::selectedVMName() const
 }
 
 // VM操作ボタン共通の処理本体
-void MainWindow::runVMAction(const QString& actionLabel, const std::function<bool(const std::string&)>& action)
+void MainWindow::runVMAction(const QString& actionLabel, const std::function<VMResult(const std::string&)>& action)
 {
     QString name = selectedVMName();
     if (name.isEmpty())
@@ -145,11 +155,17 @@ void MainWindow::runVMAction(const QString& actionLabel, const std::function<boo
 
     qDebug() << actionLabel << "row =" << ui->vmTable->currentRow();
 
+    VMResult result = action(name.toStdString());                   // 操作を実行して結果を受ける
+    if(!result.ok) {
+        QMessageBox::warning(this, actionLabel + " failed", QString::fromStdString(result.message));    // コアからの実際のエラー文言を表示
+    }
+    /*
     if (!action(name.toStdString())){
         QMessageBox::warning(this, actionLabel + "failed", QString("Failed to %1 VM '%2'.").arg(actionLabel.toLower(), name));
     }
+    */
 
-    updateTable(listVMs());
+    updateTable(fetchVMs());
 }
 
 
@@ -158,7 +174,7 @@ void MainWindow::on_vmTable_cellClicked(int row, int column)
     Q_UNUSED(column);
 
     QString name = ui->vmTable->item(row, 0)->text();
-    std::vector<VMInfo> vms = listVMs();
+    std::vector<VMInfo> vms = fetchVMs();
 
     for (const auto& vm : vms) {
         if (QString::fromStdString(vm.name) == name){
@@ -170,22 +186,22 @@ void MainWindow::on_vmTable_cellClicked(int row, int column)
 
 void MainWindow::on_startButton_clicked()
 {
-    runVMAction("Start", startVM);
+    runVMAction("Start", [this](const std::string& name){ return service_.startVM(name); });
 }
 
 void MainWindow::on_shutdownButton_clicked()
 {
-    runVMAction("Shutdown", shutdownVM);
+    runVMAction("Shutdown", [this](const std::string& name){ return service_.shutdownVM(name); });
 }
 
 void MainWindow::on_rebootButton_clicked()
 {
-    runVMAction("Reboot", rebootVM);
+    runVMAction("Reboot", [this](const std::string& name){ return service_.rebootVM(name); });
 }
 
 void MainWindow::on_forceStopButton_clicked()
 {
-    runVMAction("Forcestop", forceStopVM);
+    runVMAction("ForceStop", [this](const std::string& name){ return service_.forceStopVM(name); });
 }
 
 void MainWindow::on_deleteButton_clicked()
@@ -208,18 +224,17 @@ void MainWindow::on_deleteButton_clicked()
         return;
     }
 
-    std::string errorMessage;
-    bool ok = deleteVM(name.toStdString(), &errorMessage);
+    VMResult result = service_.deleteVM(name.toStdString());
 
-    if (!ok) {
+    if (!result.ok) {
         QMessageBox::warning(
             this,
             "Delete failed",
-            QString::fromStdString(errorMessage)
-            );
+            QString::fromStdString(result.message)
+        );
     }
 
-    std::vector<VMInfo> vms = listVMs();
+    std::vector<VMInfo> vms = fetchVMs();
     updateTable(vms);
 }
 
@@ -232,19 +247,16 @@ void MainWindow::on_createButton_clicked()
         return;
     }
 
-    std::string errorMessage;
-
-    bool ok = createVM(
+    VMResult result = service_.createVM(
         dialog.vmName().toStdString(),
         static_cast<unsigned int>(dialog.memoryMB()),
         static_cast<unsigned int>(dialog.vcpus()),
-        dialog.diskPath().toStdString(),
-        &errorMessage
+        dialog.diskPath().toStdString()
     );
 
-    qDebug() << "createVM result =" << ok;
+    qDebug() << "createVM result =" << result.ok;
 
-    if(ok) {
+    if(result.ok) {
         QMessageBox::information(
             this,
             "Create VM",
@@ -254,11 +266,11 @@ void MainWindow::on_createButton_clicked()
         QMessageBox::warning(
             this,
             "Create VM",
-            QString::fromStdString(errorMessage)
+            QString::fromStdString(result.message)
         );
     }
 
-    std::vector<VMInfo> vms = listVMs();
+    std::vector<VMInfo> vms = fetchVMs();
     updateTable(vms);
 }
 

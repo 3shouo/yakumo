@@ -10,6 +10,7 @@ CONFIG += c++17
 
 SOURCES += \
     core/libvirt_connection.cpp \
+    core/libvirt_vm_service.cpp \
     core/snapshot_manager.cpp \
     core/vm_manager.cpp \
     core/vm_repository.cpp \
@@ -25,9 +26,11 @@ SOURCES += \
 HEADERS += \
     ../yakumo/kvm-manager/vm_types.h \
     core/libvirt_connection.h \
+    core/libvirt_vm_service.h \
     core/snapshot_manager.h \
     core/vm_manager.h \
     core/vm_repository.h \
+    core/vm_service.h \
     core/vm_state_converter.h \
     core/vm_types.h \
     createvmdialog.h \
