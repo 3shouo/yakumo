@@ -2,6 +2,8 @@
 #include "libvirt_vm_service.h"
 #include "libvirt_connection.h"
 #include <libvirt/libvirt.h>
+#include <libvirt/virterror.h>
+#include <sstream>
 
 #include "vm_manager.h"             // 既存の自由関数（createVM, startVM, listVMs など）
 #include "snapshot_manager.h"       // 既存のスナップショット自由関数
@@ -112,9 +114,44 @@ VMResult LibvirtVMService::rebootVM(const std::string& name)
 
 VMResult LibvirtVMService::deleteVM(const std::string& name)
 {
-    std::string errorMessage;
-    bool ok = ::deleteVM(name, &errorMessage);
-    return toResult(ok, errorMessage, "VMの削除に失敗しました: " + name);
+    //std::string errorMessage;
+    //bool ok = ::deleteVM(name, &errorMessage);
+    //return toResult(ok, errorMessage, "VMの削除に失敗しました: " + name);
+
+    LibvirtConnection conn;
+    if (!conn.isValid()) {
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());
+    if (!dom) {
+        return VMResult::failure("Domain not found: " + name);
+    }
+
+    // 起動中はVMを削除しない
+    if (virDomainIsActive(dom) == 1) {
+        virDomainFree(dom);             // return する前にハンドルを開放
+        return VMResult::failure("Cannot delete a running VM. Shut it down first.");
+    }
+
+    // スナップショットが残っていると undefine が失敗するので、件数を数えて先に知らせる
+    int snapshotCount = virDomainSnapshotNum(dom, 0);
+    if (snapshotCount > 0) {
+        virDomainFree(dom);
+        std::ostringstream message;    // 数値を文中に埋め込むための文字列ストリーム
+        message << "Cannot delete: " << snapshotCount << " snapshot(s) still exist. Delete the snapshots first.";
+        return VMResult::failure(message.str());
+    }
+
+    int ret = virDomainUndefine(dom);   // VM定義の削除（ディスクイメージを消さない）
+    virDomainFree(dom);
+
+    if (ret != 0) {
+        // 想定外の失敗は libvirt が返したエラー文をそのまま伝える
+        std::string reason = virGetLastErrorMessage();
+        return VMResult::failure("Failed to undefined domain: " + reason);
+    }
+    return VMResult::success();
 }
 
 // ---- 情報取得 ----
