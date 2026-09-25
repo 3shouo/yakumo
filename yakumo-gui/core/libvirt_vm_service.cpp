@@ -1,5 +1,7 @@
 
 #include "libvirt_vm_service.h"
+#include "libvirt_connection.h"
+#include <libvirt/libvirt.h>
 
 #include "vm_manager.h"             // 既存の自由関数（createVM, startVM, listVMs など）
 #include "snapshot_manager.h"       // 既存のスナップショット自由関数
@@ -34,23 +36,78 @@ VMResult LibvirtVMService::createVM(
 
 VMResult LibvirtVMService::startVM(const std::string& name)
 {
-    // 旧関数はエラー文言未対応なので、失敗時は汎用エラーメッセージを返す
-    return toResult(::startVM(name), "", "VMの起動に失敗しました: " + name);
+    LibvirtConnection conn;         // 接続を開く（関数を抜けるときに自動で閉じる）
+    if(!conn.isValid()){
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());     //名前からVM（ドメイン）を検索
+    if(!dom){
+        return VMResult::failure("Domain not found: " + name);
+    }
+
+    int ret = virDomainCreate(dom);         // 起動（libvirtではCreateが「起動」の意味）
+    virDomainFree(dom);                     // ドメインハンドルを開放
+
+    return (ret == 0) ? VMResult::success()
+                      : VMResult::failure("Failed to start VM: " + name);
 }
 
 VMResult LibvirtVMService::shutdownVM(const std::string& name)
 {
-    return toResult(::shutdownVM(name), "", "VMのシャットダウンに失敗しました: " + name);
+    LibvirtConnection conn;
+    if(!conn.isValid()){
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());
+    if(!dom){
+        return VMResult::failure("Domain not found: " + name);
+    }
+
+    int ret = virDomainShutdown(dom);      // ゲストOSへ通常終了を依頼
+    virDomainFree(dom);
+
+    return (ret == 0) ? VMResult::success()
+                      : VMResult::failure("Failed to shutdown VM: " + name);
 }
 
 VMResult LibvirtVMService::forceStopVM(const std::string& name)
 {
-    return toResult(::forceStopVM(name), "", "VMの強制停止に失敗しました: " + name);
+    LibvirtConnection conn;
+	if (!conn.isValid()) {
+		return VMResult::failure("Failed to connect to hypervisor");
+	}
+
+	virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());
+	if (!dom) {
+		return VMResult::failure("Domain not found: " + name);
+	}
+
+    int ret = virDomainDestroy(dom);    // 電源断相当の強制停止
+    virDomainFree(dom);
+
+    return (ret == 0) ? VMResult::success()
+	                  : VMResult::failure("Failed to force-stop VM: " + name);
 }
 
 VMResult LibvirtVMService::rebootVM(const std::string& name)
 {
-    return toResult(::rebootVM(name), "", "VMの再起動に失敗しました: " + name);
+    LibvirtConnection conn;
+	if (!conn.isValid()) {
+		return VMResult::failure("Failed to connect to hypervisor");
+	}
+
+	virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());
+	if (!dom) {
+		return VMResult::failure("Domain not found: " + name);
+	}
+
+    int ret = virDomainReboot(dom, 0);  // 第2引数 0 = デフォルト方式で再起動
+    virDomainFree(dom);
+
+    return (ret == 0) ? VMResult::success()
+	                  : VMResult::failure("Failed to reboot VM: " + name);
 }
 
 VMResult LibvirtVMService::deleteVM(const std::string& name)
