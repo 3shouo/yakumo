@@ -17,5 +17,3 @@ bool createVM(
     const std::string& diskPath,
     std::string* errorMessage = nullptr
 );
-//bool deleteVM(const std::string& name, std::string* errorMessage = nullptr);
-bool getVncConsoleInfo(const std::string& name, VncConsoleInfo* info, std::string* errorMessage);

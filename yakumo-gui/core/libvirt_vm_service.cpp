@@ -5,6 +5,9 @@
 #include <libvirt/libvirt.h>
 #include <libvirt/virterror.h>
 #include <sstream>
+#include <QDomDocument>
+#include <QString>
+#include <cstdlib>
 
 #include "vm_manager.h"             // 既存の自由関数（createVM, startVM, listVMs など）
 #include "snapshot_manager.h"       // 既存のスナップショット自由関数
@@ -202,9 +205,69 @@ VMResult LibvirtVMService::getVncConsoleInfo(const std::string& name, VncConsole
     if (!outInfo) {
         return VMResult::failure("内部エラー : 出力先が指定されていません");
     }
-    std::string errorMessage;
-    bool ok = ::getVncConsoleInfo(name, outInfo, &errorMessage);
-    return toResult(ok, errorMessage, "VNC接続情報の取得に失敗しました");
+    //std::string errorMessage;
+    //bool ok = ::getVncConsoleInfo(name, outInfo, &errorMessage);
+    //return toResult(ok, errorMessage, "VNC接続情報の取得に失敗しました");
+
+    LibvirtConnection conn;
+    if (!conn.isValid()) {
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), name.c_str());
+    if (!dom) {
+        return VMResult::failure("Domain not found: " + name);
+    }
+
+    if (virDomainIsActive(dom) != 1) {              // 停止中のVMにVNC画面はない
+        virDomainFree(dom);
+        return VMResult::failure("VM is not running");
+    }
+
+    char* xml = virDomainGetXMLDesc(dom, 0);  // VM定義XMLをC文字列で取得
+    if (!xml) {
+        virDomainFree(dom);
+        return VMResult::failure("Failed to get domain XML");
+    }
+
+    QDomDocument document;
+    bool parsed = document.setContent(QString::fromUtf8(xml));              // XML文字列を解析してDOMツリー化
+
+    free(xml);                                                              // libvirtがmallocで確保した文字列なのでfreeで解放
+    virDomainFree(dom);                                                     // 以降はXMLだけで用が足りるのでここで解放
+
+    if (!parsed) {
+        return VMResult::failure("Failed to parse domain XML");
+    }
+
+    QDomNodeList graphicsNodes = document.elementsByTagName("graphics");    // <graphics>要素を全部集める
+
+    for (int i = 0; i < graphicsNodes.count(); ++i) {
+        QDomElement graphics = graphicsNodes.at(i).toElement();
+
+        if (graphics.attribute("type") != "vnc") {                         // vnc以外（spiceなど）は読み飛ばす
+            continue;
+        }
+
+        bool ok = false;
+        int port = graphics.attribute("port").toInt(&ok);                   // port属性を数値へ変換（成否がokに入る）
+
+        if (!ok || port <= 0) {                                             // 未割り当て時はport="-1"が入っている
+            return VMResult::failure("VNC port is not assigned");
+        }
+
+        QString host = graphics.attribute("listen");
+        if (host.isEmpty()) {
+            host = "127.0.0.1";                                             // listen指定がなければローカルとみなす
+        }
+
+        outInfo->host = host.toStdString();                                 // 見つかった接続情報を出力引数へ書き込む
+        outInfo->port = port;
+
+        return VMResult::success();
+    }
+
+    return VMResult::failure("VNC graphics device was not found");
 }
 
 // ---- スナップショット ----

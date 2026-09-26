@@ -47,6 +47,7 @@ static bool isQcow2File(const std::string& path)
            magic[3] == 0xFB;
 }
 
+/*
 // 停止中のVMだけを削除する（VM定義を外す）
 bool deleteVM(const std::string &name, std::string* errorMessage)
 {
@@ -89,6 +90,7 @@ bool deleteVM(const std::string &name, std::string* errorMessage)
     virDomainFree(dom);
     return ret == 0;
 }
+    */
 
 // VM名確認
 static bool isValidVMName(const std::string& name)
@@ -150,6 +152,7 @@ static void setError(std::string* errorMessage, const std::string& message)
 }
 
 // VMコンソール関数
+/*
 bool getVncConsoleInfo(const std::string& name, VncConsoleInfo* info, std::string* errorMessage = nullptr)
 {
     if(!info){
@@ -231,6 +234,7 @@ bool getVncConsoleInfo(const std::string& name, VncConsoleInfo* info, std::strin
     setError(errorMessage, "VNC graphics device was not found");
     return false;
 }
+*/
 
 
 // VMの作成
