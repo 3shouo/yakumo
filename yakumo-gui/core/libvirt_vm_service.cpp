@@ -185,7 +185,7 @@ VMResult LibvirtVMService::listVMs(std::vector<VMInfo>* outVms)
             vm.name     = virDomainGetName(domains[i]);
             vm.state    = convertState(info.state);
             vm.vcpus    = info.nrVirtCpu;
-            vm.memoryMB = info.maxMem;
+            vm.memoryMB = info.maxMem / 1024;
             vm.isActive = virDomainIsActive(domains[i]) == 1;
             outVms->push_back(vm);
         }
