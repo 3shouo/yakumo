@@ -8,8 +8,10 @@
 #include <QDomDocument>
 #include <QString>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <cctype>
 
-#include "vm_manager.h"             // 既存の自由関数（createVM, startVM, listVMs など）
 #include "snapshot_manager.h"       // 既存のスナップショット自由関数
 
 // このファイル内だけで使う補助関数
@@ -25,6 +27,84 @@ VMResult toResult(bool ok, const std::string& errorMessage, const std::string& f
     return VMResult::failure(errorMessage.empty() ? fallback : errorMessage);
 }
 
+// createVM の入力検証で使う上限・下限
+constexpr unsigned int MIN_MEMORY_MB = 256;
+constexpr unsigned int MAX_MEMORY_MB = 32768;
+constexpr unsigned int MIN_VCPUS = 1;
+constexpr unsigned int MAX_VCPUS = 16;
+
+
+// ファイル先頭のマジックナンバーでqcow2形式かどうかを判定する
+bool isQcow2File(const std::string& path)
+{
+    // バイナリモードでファイルを開く
+    std::ifstream file(path, std::ios::binary);
+    if (!file){
+        return false;
+    }
+
+    // 先頭4バイトを読み込む
+    unsigned char magic[4] = {0};
+    file.read(reinterpret_cast<char*>(magic), 4);
+    if (file.gcount() != 4){
+        return false;
+    }
+
+    // qcow2 のマジックナンバーは "QFI\xFB" (0x51 0x46 0x49 0xFB)
+    return magic[0] == 0x51 &&
+           magic[1] == 0x46 &&
+           magic[2] == 0x49 &&
+           magic[3] == 0xFB;
+}
+
+// VM名確認
+bool isValidVMName(const std::string& name)
+{
+    for (char c : name) {
+        if (std::isalnum(static_cast<unsigned char>(c))){
+            continue;
+        }
+
+        if (c == '-' || c == '_' || c == '.'){
+            continue;
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+// XML文字確認
+static std::string escapeXml(const std::string& text)
+{
+    std::string escaped;
+    escaped.reserve(text.size());
+
+    for (char c : text) {
+        switch (c){
+        case '&':
+            escaped += "&amp;";
+            break;
+        case '<':
+            escaped += "&lt;";
+            break;
+        case '>':
+            escaped += "&gt;";
+            break;
+        case '"':
+            escaped += "&quot;";
+            break;
+        case '\'':
+            escaped += "&apos;";
+            break;
+        default:
+            escaped += c;
+            break;
+        }
+    }
+    return escaped;
+}
 } // namespace
 
 // ---- VMライフサイクル ----
@@ -35,9 +115,107 @@ VMResult LibvirtVMService::createVM(
     unsigned int vcpus,
     const std::string& diskPath)
 {
-    std::string errorMessgae;           // 旧形式のエラー受取用
-    bool ok = ::createVM(name, memoryMB, vcpus, diskPath, &errorMessgae); // 既存の自由関数へ委譲
-    return toResult(ok, errorMessgae, "VMの作成に失敗しました");
+    //std::string errorMessgae;           // 旧形式のエラー受取用
+    //bool ok = ::createVM(name, memoryMB, vcpus, diskPath, &errorMessgae); // 既存の自由関数へ委譲
+    //return toResult(ok, errorMessgae, "VMの作成に失敗しました");
+
+    if (name.empty()) {
+        return VMResult::failure("VM name is empty");
+    }
+
+    if (!isValidVMName(name)) {
+        return VMResult::failure("VM name contains invalid characters");
+    }
+
+    if (memoryMB < MIN_MEMORY_MB || memoryMB > MAX_MEMORY_MB) {
+        std::ostringstream message;
+        message << "Memory must be between " << MIN_MEMORY_MB << " and " << MAX_MEMORY_MB << " MB";
+        return VMResult::failure(message.str());
+    }
+
+    if (vcpus < MIN_VCPUS || vcpus > MAX_VCPUS) {
+        std::ostringstream message;
+        message << "vCPUs must be between " << MIN_VCPUS << " and" << MAX_VCPUS;
+        return VMResult::failure(message.str());
+    }
+
+    if (diskPath.empty()) {
+        return VMResult::failure("Disk path is empty");
+    }
+
+    if (!std::filesystem::path(diskPath).is_absolute()) {
+        return VMResult::failure("Disk path must be absolute");
+    }
+
+    if (!std::filesystem::path(diskPath).is_absolute()) {
+        return VMResult::failure("Disk path must be absolute");
+    }
+
+    if (!std::filesystem::exists(diskPath)) {
+        return VMResult::failure("Disk image file does not exist");
+    }
+
+    if (!std::filesystem::is_regular_file(diskPath)) {
+        return VMResult::failure("Disk path is not a regular file");
+    }
+
+    // 拡張子ではなくファイルの中身（マジックナンバー）でqcow2かどうかを判定する
+    if (!isQcow2File(diskPath)) {
+        return VMResult::failure("Disk image must be a qcow2 file");
+    }
+
+    LibvirtConnection conn;
+    if (!conn.isValid()) {
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr existingDom = virDomainLookupByName(conn.get(), name.c_str());
+    if (existingDom) {
+        virDomainFree(existingDom);             // 見つかったハンドルを解放してから拒否
+        return VMResult::failure("Domain already exists");
+    }
+
+    std::string escapedName = escapeXml(name);
+    std::string escapedDiskPath = escapeXml(diskPath);
+
+    std::ostringstream xml;
+
+    xml
+        << "<domain type='kvm'>"
+        << "<name>" << escapedName << "</name>"
+        << "<memory unit='MiB'>" << memoryMB << "</memory>"
+        << "<vcpu>" << vcpus << "</vcpu>"
+        << "<os>"
+        << "<type arch='x86_64'>hvm</type>"
+        << "</os>"
+        << "<devices>"
+        << "<disk type='file' device='disk'>"
+        << "<driver name='qemu' type='qcow2'/>"
+        << "<source file='" << escapedDiskPath << "'/>"
+        << "<target dev='vda' bus='virtio'/>"
+        << "</disk>"
+        << "<interface type='network'>"
+        << "<source network='default'/>"
+        << "<model type='virtio'/>"
+        << "</interface>"
+        << "<graphics type='vnc' port='-1' autoport='yes' listen='127.0.0.1'>"
+        << "<listen type='address' address='127.0.0.1'/>"
+        << "</graphics>"
+        << "<video>"
+        << "<model type='virtio'/>"
+        << "</video>"
+        << "<input type='tablet' bus='usb'/>"
+        << "<console type='pty'/>"
+        << "</devices>"
+        << "</domain>";
+
+    virDomainPtr dom = virDomainDefineXML(conn.get(), xml.str().c_str());   // XMLをlibvirtに登録
+    if (!dom) {
+        return VMResult::failure("Failed to define domain");
+    }
+
+    virDomainFree(dom);
+    return VMResult::success();
 }
 
 VMResult LibvirtVMService::startVM(const std::string& name)

@@ -1,6 +1,6 @@
 
 #pragma once
 
-#include "vm_manager.h"
+#include "vm_types.h"
 
 VMState convertState(int state);
