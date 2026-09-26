@@ -1,6 +1,7 @@
 
 #include "libvirt_vm_service.h"
 #include "libvirt_connection.h"
+#include "vm_state_converter.h"
 #include <libvirt/libvirt.h>
 #include <libvirt/virterror.h>
 #include <sstream>
@@ -114,10 +115,6 @@ VMResult LibvirtVMService::rebootVM(const std::string& name)
 
 VMResult LibvirtVMService::deleteVM(const std::string& name)
 {
-    //std::string errorMessage;
-    //bool ok = ::deleteVM(name, &errorMessage);
-    //return toResult(ok, errorMessage, "VMの削除に失敗しました: " + name);
-
     LibvirtConnection conn;
     if (!conn.isValid()) {
         return VMResult::failure("Failed to connect to hypervisor");
@@ -158,12 +155,47 @@ VMResult LibvirtVMService::deleteVM(const std::string& name)
 
 VMResult LibvirtVMService::listVMs(std::vector<VMInfo>* outVms)
 {
-    if (!outVms) {                               // 出力先がなければ何もできない
+    if (!outVms) {                              // 出力先がなければ何もできない
         return VMResult::failure("内部エラー : 出力先が指定されていません");
     }
-    *outVms = ::listVMs();                      // 既存関数の結果を出力引数へコピー
-    return VMResult::success();                 // 旧関数は失敗を通知しないため常に成功扱い（改善は後続フェーズ）
+    outVms->clear();                            // 前回の内容が残らないように空にしておく
+
+    LibvirtConnection conn;
+    if (!conn.isValid()) {
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr* domains = nullptr;            // ドメインの配列（libvirt側が確保している）
+    int count = virConnectListAllDomains(
+        conn.get(),
+        &domains,
+        VIR_CONNECT_LIST_DOMAINS_ACTIVE |       // 稼働中と
+        VIR_CONNECT_LIST_DOMAINS_INACTIVE       // 停止中の両方を列挙
+    );
+
+    if (count < 0) {                            // 列挙自体の失敗（-1が返る）
+        std::string reason = virGetLastErrorMessage();
+        return VMResult::failure("Failed to list domains: " + reason);
+    }
+
+    for (int i = 0; i < count; i++) {
+        virDomainInfo info;
+        if (virDomainGetInfo(domains[i], &info) == 0) {
+            VMInfo vm;
+            vm.name     = virDomainGetName(domains[i]);
+            vm.state    = convertState(info.state);
+            vm.vcpus    = info.nrVirtCpu;
+            vm.memoryMB = info.maxMem;
+            vm.isActive = virDomainIsActive(domains[i]) == 1;
+            outVms->push_back(vm);
+        }
+        virDomainFree(domains[i]);              // 個々のドメインハンドルを開放
+    }
+    free(domains);                              // 配列本体はlibvirtがCのmallocで確保したのでfreeで開放
+
+    return VMResult::success();
 }
+
 
 VMResult LibvirtVMService::getVncConsoleInfo(const std::string& name, VncConsoleInfo* outInfo)
 {

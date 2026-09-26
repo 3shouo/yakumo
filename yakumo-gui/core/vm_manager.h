@@ -1,6 +1,5 @@
 
 #pragma once
-#include <vector>
 #include <string>
 #include "vm_types.h"
 
@@ -20,5 +19,3 @@ bool createVM(
 );
 //bool deleteVM(const std::string& name, std::string* errorMessage = nullptr);
 bool getVncConsoleInfo(const std::string& name, VncConsoleInfo* info, std::string* errorMessage);
-
-std::vector<VMInfo> listVMs();
