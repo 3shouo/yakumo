@@ -12,23 +12,10 @@
 #include <fstream>
 #include <cctype>
 
-//#include "snapshot_manager.h"       // 既存のスナップショット自由関数
+
 
 // このファイル内だけで使う補助関数
 namespace {
-
-/*
-// 「bool + エラー文字列」の旧形式を VMResult に変換する
-VMResult toResult(bool ok, const std::string& errorMessage, const std::string& fallback)
-{
-    if (ok) {
-        return VMResult::success();     // 成功ならエラー文言は不要
-    }
-    // 旧関数が文言をくれなかった場合は fallback（汎用メッセージ）を使う
-    return VMResult::failure(errorMessage.empty() ? fallback : errorMessage);
-}
-    */
-
 // createVM の入力検証で使う上限・下限
 constexpr unsigned int MIN_MEMORY_MB = 256;
 constexpr unsigned int MAX_MEMORY_MB = 32768;
@@ -116,10 +103,6 @@ VMResult LibvirtVMService::createVM(
     unsigned int vcpus,
     const std::string& diskPath)
 {
-    //std::string errorMessgae;           // 旧形式のエラー受取用
-    //bool ok = ::createVM(name, memoryMB, vcpus, diskPath, &errorMessgae); // 既存の自由関数へ委譲
-    //return toResult(ok, errorMessgae, "VMの作成に失敗しました");
-
     if (name.empty()) {
         return VMResult::failure("VM name is empty");
     }
@@ -384,9 +367,6 @@ VMResult LibvirtVMService::getVncConsoleInfo(const std::string& name, VncConsole
     if (!outInfo) {
         return VMResult::failure("内部エラー : 出力先が指定されていません");
     }
-    //std::string errorMessage;
-    //bool ok = ::getVncConsoleInfo(name, outInfo, &errorMessage);
-    //return toResult(ok, errorMessage, "VNC接続情報の取得に失敗しました");
 
     LibvirtConnection conn;
     if (!conn.isValid()) {
@@ -456,10 +436,6 @@ VMResult LibvirtVMService::createSnapshot(
     const std::string& snapshotName,
     const std::string& description)
 {
-    //std::string errorMessage;
-    //bool ok = ::createSnapshot(vmName, snapshotName, description, &errorMessage);
-    //return toResult(ok, errorMessage, "スナップショットの作成に失敗しました");
-
     if (snapshotName.empty()) {
         return VMResult::failure("Snapshot name is empty");
     }
@@ -504,18 +480,6 @@ VMResult LibvirtVMService::createSnapshot(
 
 VMResult LibvirtVMService::listSnapshots(const std::string& vmName, std::vector<SnapshotInfo>* outSnapshots)
 {
-    /*
-    if (!outSnapshots) {
-        return VMResult::failure("内部エラー : 出力先が指定されていません");
-    }
-    std::string errorMessage;
-    *outSnapshots = ::listSnapshots(vmName, &errorMessage);
-    if (!errorMessage.empty()) {               // 旧関数は「errorMessage が入る=失敗」という仕様
-        return VMResult::failure(errorMessage);
-    }
-    return VMResult::success();
-    */
-
     if (!outSnapshots) {
         return VMResult::failure("内部エラー : 出力先が指定されていません");
     }
@@ -571,10 +535,6 @@ VMResult LibvirtVMService::listSnapshots(const std::string& vmName, std::vector<
 
 VMResult LibvirtVMService::revertSnapshot(const std::string& vmName, const std::string& snapshotName)
 {
-    //std::string errorMessage;
-    //bool ok = ::revertSnapshot(vmName, snapshotName, &errorMessage);
-    //return toResult(ok, errorMessage, "スナップショットの復元に失敗しました");
-
     LibvirtConnection conn;
     if (!conn.isValid()) {
         return VMResult::failure("Failed to connect to hypervisor");
@@ -602,10 +562,6 @@ VMResult LibvirtVMService::revertSnapshot(const std::string& vmName, const std::
 
 VMResult LibvirtVMService::deleteSnapshot(const std::string& vmName, const std::string& snapshotName)
 {
-    //std::string errorMessage;
-    //bool ok = ::deleteSnapshot(vmName, snapshotName, &errorMessage);
-    //return toResult(ok, errorMessage, "スナップショットの削除に失敗しました");
-
     LibvirtConnection conn;
     if (!conn.isValid()) {
         return VMResult::failure("Failed to connect to hypervisor");

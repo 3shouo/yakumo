@@ -5,8 +5,8 @@
 
 /*
  * IVMService の libvirt 実装。
- * 現段階では既存の自由関数（vm_manager.cpp / snapshot_manager.cpp）へ
- * 委譲するだけの薄いラッパー。将来、自由関数の中身をここへ移して一本化する。
+ * Libvirt C API を直接呼び出す場所（接続、ドメイン操作、XMLの組み立てと解析）
+ * エラーはすべて VMResult に理由付きで載せて返す
  */
 
  class LibvirtVMService : public IVMService {

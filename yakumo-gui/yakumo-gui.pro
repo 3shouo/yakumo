@@ -21,7 +21,6 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
-    ../yakumo/kvm-manager/vm_types.h \
     core/libvirt_connection.h \
     core/libvirt_vm_service.h \
     core/vm_service.h \
