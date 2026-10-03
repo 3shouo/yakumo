@@ -12,11 +12,12 @@
 #include <fstream>
 #include <cctype>
 
-#include "snapshot_manager.h"       // 既存のスナップショット自由関数
+//#include "snapshot_manager.h"       // 既存のスナップショット自由関数
 
 // このファイル内だけで使う補助関数
 namespace {
 
+/*
 // 「bool + エラー文字列」の旧形式を VMResult に変換する
 VMResult toResult(bool ok, const std::string& errorMessage, const std::string& fallback)
 {
@@ -26,13 +27,13 @@ VMResult toResult(bool ok, const std::string& errorMessage, const std::string& f
     // 旧関数が文言をくれなかった場合は fallback（汎用メッセージ）を使う
     return VMResult::failure(errorMessage.empty() ? fallback : errorMessage);
 }
+    */
 
 // createVM の入力検証で使う上限・下限
 constexpr unsigned int MIN_MEMORY_MB = 256;
 constexpr unsigned int MAX_MEMORY_MB = 32768;
 constexpr unsigned int MIN_VCPUS = 1;
 constexpr unsigned int MAX_VCPUS = 16;
-
 
 // ファイル先頭のマジックナンバーでqcow2形式かどうかを判定する
 bool isQcow2File(const std::string& path)
@@ -57,8 +58,8 @@ bool isQcow2File(const std::string& path)
            magic[3] == 0xFB;
 }
 
-// VM名確認
-bool isValidVMName(const std::string& name)
+// VM名・スナップショット名の文字チェック（英数字と - _ . のみ許可）
+bool isValidName(const std::string& name)
 {
     for (char c : name) {
         if (std::isalnum(static_cast<unsigned char>(c))){
@@ -123,7 +124,7 @@ VMResult LibvirtVMService::createVM(
         return VMResult::failure("VM name is empty");
     }
 
-    if (!isValidVMName(name)) {
+    if (!isValidName(name)) {
         return VMResult::failure("VM name contains invalid characters");
     }
 
@@ -455,13 +456,55 @@ VMResult LibvirtVMService::createSnapshot(
     const std::string& snapshotName,
     const std::string& description)
 {
-    std::string errorMessage;
-    bool ok = ::createSnapshot(vmName, snapshotName, description, &errorMessage);
-    return toResult(ok, errorMessage, "スナップショットの作成に失敗しました");
+    //std::string errorMessage;
+    //bool ok = ::createSnapshot(vmName, snapshotName, description, &errorMessage);
+    //return toResult(ok, errorMessage, "スナップショットの作成に失敗しました");
+
+    if (snapshotName.empty()) {
+        return VMResult::failure("Snapshot name is empty");
+    }
+
+    if (!isValidName(snapshotName)) {
+        return VMResult::failure("Snapshot name contains invalid characters");
+    }
+
+    LibvirtConnection conn;
+    if (!conn.isValid()) {
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), vmName.c_str());
+    if (!dom) {
+        return VMResult::failure("Domain not found: " + vmName);
+    }
+
+    // スナップショット定義XMLを組み立てる（名前と説明はエスケープ）
+    std::string escapedName = escapeXml(snapshotName);
+    std::string escapedDesc = escapeXml(description);
+
+    std::ostringstream xml;
+    xml << "<domainsnapshot>"
+        << "<name>"         << escapedName << "</name>"
+        << "<description>"  << escapedDesc << "</description>"
+        << "</domainsnapshot>";
+
+    // flags=0 → 稼働中ならRAM込み、停止中はディスクのみ
+    virDomainSnapshotPtr snap = virDomainSnapshotCreateXML(dom, xml.str().c_str(), 0);
+
+    if (!snap) {
+        virDomainFree(dom);
+        return VMResult::failure("Failed to create snapshot");
+    }
+
+    virDomainSnapshotFree(snap);        // 確保した順と逆に解放
+    virDomainFree(dom);
+    return VMResult::success();
+
 }
 
 VMResult LibvirtVMService::listSnapshots(const std::string& vmName, std::vector<SnapshotInfo>* outSnapshots)
 {
+    /*
     if (!outSnapshots) {
         return VMResult::failure("内部エラー : 出力先が指定されていません");
     }
@@ -471,19 +514,121 @@ VMResult LibvirtVMService::listSnapshots(const std::string& vmName, std::vector<
         return VMResult::failure(errorMessage);
     }
     return VMResult::success();
+    */
+
+    if (!outSnapshots) {
+        return VMResult::failure("内部エラー : 出力先が指定されていません");
+    }
+    outSnapshots->clear();      // 前回の内容が残らないように空にしておく
+
+    LibvirtConnection conn;
+    if (!conn.isValid()) {
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), vmName.c_str());
+    if (!dom) {
+        return VMResult::failure("Domain not found: " + vmName);
+    }
+
+    virDomainSnapshotPtr* snaps = nullptr;      // スナップショットの配列（libvirtが確保する）
+    int count = virDomainListAllSnapshots(dom, &snaps, 0);
+
+    if (count < 0) {
+        virDomainFree(dom);
+        return VMResult::failure("Failed to list snapshots");
+    }
+
+    for (int i = 0; i < count; i++) {
+        SnapshotInfo info{};                    // メンバを0/空で初期化
+
+        char* xml = virDomainSnapshotGetXMLDesc(snaps[i], 0);
+        if (xml) {
+            QDomDocument doc;
+            if (doc.setContent(QString::fromUtf8(xml))) {
+                QDomElement root  = doc.documentElement();
+                info.name         = root.firstChildElement("name").text().toStdString();
+                info.description  = root.firstChildElement("description").text().toStdString();
+                info.state        = root.firstChildElement("state").text().toStdString();
+                info.parent       = root.firstChildElement("parent")
+                                        .firstChildElement("name").text().toStdString();
+                info.creationTime = root.firstChildElement("creationTime").text().toLongLong();
+            }
+            free(xml);             // libvirt が確保した文字列を解放
+        }
+
+        info.isCurrent = (virDomainSnapshotIsCurrent(snaps[i], 0) == 1);
+
+        outSnapshots->push_back(info);      // 出力引数へ追加
+        virDomainSnapshotFree(snaps[i]);
+    }
+
+    free(snaps);
+    virDomainFree(dom);
+    return VMResult::success();
 }
+
 
 VMResult LibvirtVMService::revertSnapshot(const std::string& vmName, const std::string& snapshotName)
 {
-    std::string errorMessage;
-    bool ok = ::revertSnapshot(vmName, snapshotName, &errorMessage);
-    return toResult(ok, errorMessage, "スナップショットの復元に失敗しました");
+    //std::string errorMessage;
+    //bool ok = ::revertSnapshot(vmName, snapshotName, &errorMessage);
+    //return toResult(ok, errorMessage, "スナップショットの復元に失敗しました");
+
+    LibvirtConnection conn;
+    if (!conn.isValid()) {
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), vmName.c_str());
+    if (!dom) {
+        return VMResult::failure("Domain not found: " + vmName);
+    }
+
+    virDomainSnapshotPtr snap = virDomainSnapshotLookupByName(dom, snapshotName.c_str(), 0);
+    if (!snap) {
+        virDomainFree(dom);
+        return VMResult::failure("Snapshot not found: " + snapshotName);
+    }
+
+    int ret = virDomainRevertToSnapshot(snap, 0);       // 復元実行
+
+    virDomainSnapshotFree(snap);
+    virDomainFree(dom);
+
+    return (ret == 0) ? VMResult::success()
+                      : VMResult::failure("Failed to revert snapshot: " + snapshotName);
 }
 
 VMResult LibvirtVMService::deleteSnapshot(const std::string& vmName, const std::string& snapshotName)
 {
-    std::string errorMessage;
-    bool ok = ::deleteSnapshot(vmName, snapshotName, &errorMessage);
-    return toResult(ok, errorMessage, "スナップショットの削除に失敗しました");
+    //std::string errorMessage;
+    //bool ok = ::deleteSnapshot(vmName, snapshotName, &errorMessage);
+    //return toResult(ok, errorMessage, "スナップショットの削除に失敗しました");
+
+    LibvirtConnection conn;
+    if (!conn.isValid()) {
+        return VMResult::failure("Failed to connect to hypervisor");
+    }
+
+    virDomainPtr dom = virDomainLookupByName(conn.get(), vmName.c_str());
+    if (!dom) {
+        return VMResult::failure("Domain not found: " + vmName);
+    }
+
+    virDomainSnapshotPtr snap = virDomainSnapshotLookupByName(dom, snapshotName.c_str(), 0);
+    if (!snap) {
+        virDomainFree(dom);
+        return VMResult::failure("Snapshot not found: " + snapshotName);
+    }
+
+    // flags=0 : このスナップショットのみ削除（子は親側へ付け替えられる）
+    int ret = virDomainSnapshotDelete(snap, 0);
+
+    virDomainSnapshotFree(snap);
+    virDomainFree(dom);
+
+    return (ret == 0) ? VMResult::success()
+                      : VMResult::failure("Failed to delete snapshot: " + snapshotName);
 }
 
