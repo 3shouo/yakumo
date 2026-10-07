@@ -13,6 +13,7 @@ SOURCES += \
     core/libvirt_vm_service.cpp \
     core/vm_state_converter.cpp \
     core/vm_types.cpp \
+    manager/vm_watchdog.cpp \
     createvmdialog.cpp \
     vncconsoledialog.cpp \
     vncwidget.cpp \
@@ -26,6 +27,7 @@ HEADERS += \
     core/vm_service.h \
     core/vm_state_converter.h \
     core/vm_types.h \
+    manager/vm_watchdog.h \
     createvmdialog.h \
     vncconsoledialog.h \
     vncwidget.h \
