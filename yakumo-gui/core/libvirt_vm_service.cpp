@@ -352,6 +352,18 @@ VMResult LibvirtVMService::listVMs(std::vector<VMInfo>* outVms)
             vm.vcpus    = info.nrVirtCpu;
             vm.memoryMB = info.maxMem / 1024;
             vm.isActive = virDomainIsActive(domains[i]) == 1;
+
+            // 停止理由を取得し、クラッシュ起因かどうかを判定する
+            int state = 0;                      // libvirt生の状態値の受け取り用
+            int reason = 0;                     // その状態になった理由の受け取り用
+            if (virDomainGetState(domains[i], &state, &reason, 0) == 0) {    // 成功時のみ判定（失敗時はfalseのまま）
+                vm.crashed =
+                    (state == VIR_DOMAIN_CRASHED) ||                        // ゲストがパニックして保存された状態
+                    (state == VIR_DOMAIN_SHUTOFF &&
+                     reason == VIR_DOMAIN_SHUTOFF_CRASHED);                 // QEMUプロセスの異常死などで停止した
+            }
+
+
             outVms->push_back(vm);
         }
         virDomainFree(domains[i]);              // 個々のドメインハンドルを開放

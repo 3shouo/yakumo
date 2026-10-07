@@ -20,6 +20,7 @@ struct VMInfo {
 	unsigned int vcpus;        //vCPU数
     unsigned long memoryMB;    //メモリ(MB)
 	bool isActive;             //稼働中かどうか
+	bool crashed = false;	   //クラッシュ起因の停止かどうか（ウォッチドッグが使用）
 };
 
 QString stateToString(VMState state);
