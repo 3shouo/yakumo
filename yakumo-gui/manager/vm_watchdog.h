@@ -2,6 +2,8 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QHash>
+#include <QString>
 
 #include "vm_service.h"
 
@@ -21,6 +23,10 @@ public:
     void start();                     // 監視を開始する
     void stop();                      // 監視を停止する
 
+signals:
+    void vmRecovered(const QString& name);                              // 復旧（起動）に成功した
+    void vmRecoveryFailed(const QString& name, const QString& reason);  // 諦めた（上限到達）
+
 private slots:
     void onTick();                    // 周期実行の本体
 
@@ -29,6 +35,7 @@ private:
 
     IVMService& service_;             // コアへの入口（GUIと同じ注入方式）
     QTimer timer_;                    // 周期タイマー（シングルショットを毎回再始動）
+    QHash<QString, int> retryCounts_; // VM名→復旧試行回数（連続失敗の記録）
 };
 
 

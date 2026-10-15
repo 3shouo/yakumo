@@ -8,6 +8,7 @@
 // 監視周期（15~25秒のランダム。GUIの70~90秒とは別周期にして位相衝突を避ける）
 static constexpr int kTickMinMs = 15 * 1000;
 static constexpr int kTickMaxMs = 25 * 1000;
+static constexpr int kMaxRetries = 3;           // 同一VMへの復旧試行回数の上限
 
 VMWatchdog::VMWatchdog(IVMService& service, QObject* parent)
     : QObject(parent)
@@ -47,15 +48,46 @@ void VMWatchdog::onTick()
         return;
     }
 
-    qDebug() << "[watchdog] tick: checked" << vms.size() << "VMs";      // 動作確認用
-
     for (const VMInfo& vm : vms) {
-        if (vm.crashed) {
-            // 現段階は観察のみ：検出をログに残すだけ
-            qDebug() << "[watchdog] crashed VM Detected:" << QString::fromStdString(vm.name);
+            const QString name = QString::fromStdString(vm.name);
+
+            // 正常稼働中のVMは失敗カウンタをリセット（復旧が定着した、または手動で直された）
+            if (vm.state == VMState::Running && !vm.crashed) {
+                retryCounts_.remove(name);
+                continue;
+            }
+
+            if (!vm.crashed) {
+                continue;               // クラッシュ以外の停止（正常停止・ForceStopなど）には触れない
+            }
+
+            int attempts = retryCounts_.value(name, 0);     // これまでの試行回数（未登録なら0）
+
+            // 上限に達したVMは諦める（通知は一度だけ出し、以降は静観）
+            if (attempts >= kMaxRetries) {
+                if (attempts == kMaxRetries) {
+                    qDebug() << "[watchdog] giving up on" << name;
+                    emit vmRecoveryFailed(name, QString("Gave up after %1 recovery attempts").arg(kMaxRetries));
+                    retryCounts_[name] = kMaxRetries + 1;       // 「通知済み」の印として1つ勧めておく
+                }
+            continue;
+        }
+
+        // 復旧を試みる（試行回数は成否に関わらず数える）
+        retryCounts_[name] = attempts + 1;
+        qDebug() << "[watchdog] revovering" << name
+                 << "(attempt" << attempts + 1 << "/" << kMaxRetries << ")";
+
+        VMResult startResult = service_.startVM(vm.name);
+
+        if (startResult.ok) {
+            qDebug() << "[watchdog] recovery started:" << name;
+            emit vmRecovered(name);
+        } else {
+            qDebug() << "[watchdog] recovery failed:" << name
+                     << QString::fromStdString(startResult.message);
         }
     }
-
     timer_.start(nextIntervalMs());       // 次回を予約
 }
 
