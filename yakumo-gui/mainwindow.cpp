@@ -320,3 +320,18 @@ void MainWindow::on_snapshotButton_clicked()
     SnapshotDialog dialog(service_, name, this);  // 選択中VM名を渡して生成
     dialog.exec();                                // モーダル表示（閉じるまでブロック）
 }
+
+// ウォッチドッグがVMを復旧させたとき
+void MainWindow::onVmRecovered(const QString& name)
+{
+    statusBar()->showMessage(QString("Watchdog: VM '%1' crashed and was automatically restarted.").arg(name), 15000);
+    updateTable(fetchVMs());
+}
+
+// ウォッチドッグが復旧を諦めたとき
+void MainWindow::onVmRecoveryFailed(const QString& name, const QString& reason)
+{
+    // タイムアウト指定なし=次のメッセージまで表示し続ける
+    statusBar()->showMessage(QString("Watchdog: VM '%1' could not be recovered (%2). Please check it manually.").arg(name, reason));
+    updateTable(fetchVMs());
+}

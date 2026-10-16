@@ -24,6 +24,10 @@ public:
     explicit MainWindow(IVMService& service, QWidget *parent = nullptr);
     ~MainWindow();
 
+public slots:
+    void onVmRecovered(const QString& name);
+    void onVmRecoveryFailed(const QString& name, const QString& reason);
+
 private:
     Ui::MainWindow *ui;
     IVMService& service_;                                   // コアへの入口

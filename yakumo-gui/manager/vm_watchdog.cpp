@@ -75,7 +75,7 @@ void VMWatchdog::onTick()
 
         // 復旧を試みる（試行回数は成否に関わらず数える）
         retryCounts_[name] = attempts + 1;
-        qDebug() << "[watchdog] revovering" << name
+        qDebug() << "[watchdog] recovering" << name
                  << "(attempt" << attempts + 1 << "/" << kMaxRetries << ")";
 
         VMResult startResult = service_.startVM(vm.name);
