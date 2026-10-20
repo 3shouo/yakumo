@@ -215,10 +215,15 @@ VMResult LibvirtVMService::startVM(const std::string& name)
     }
 
     int ret = virDomainCreate(dom);         // 起動（libvirtではCreateが「起動」の意味）
-    virDomainFree(dom);                     // ドメインハンドルを開放
+    if (ret != 0) {
+        // 失敗理由は virDomainFree より先に取り出す（Free を呼ぶと Libvirt 内部のエラーが消える）
+        std::string reason = virGetLastErrorMessage();
+        virDomainFree(dom);                 // return する前にハンドルを解放
+        return VMResult::failure("Failed to start VM '" + name + "': " + reason);
+    }
 
-    return (ret == 0) ? VMResult::success()
-                      : VMResult::failure("Failed to start VM: " + name);
+    virDomainFree(dom);                     // ドメインハンドルを開放
+    return VMResult::success();
 }
 
 VMResult LibvirtVMService::shutdownVM(const std::string& name)
@@ -234,10 +239,15 @@ VMResult LibvirtVMService::shutdownVM(const std::string& name)
     }
 
     int ret = virDomainShutdown(dom);      // ゲストOSへ通常終了を依頼
-    virDomainFree(dom);
+    if (ret != 0) {
+        // 失敗理由は virDomainFree より先に取り出す（Free を呼ぶと Libvirt 内部のエラーが消える）
+        std::string reason = virGetLastErrorMessage();
+        virDomainFree(dom);
+        return VMResult::failure("Failed to shutdown VM '" + name + "': " + reason);
+    }
 
-    return (ret == 0) ? VMResult::success()
-                      : VMResult::failure("Failed to shutdown VM: " + name);
+    virDomainFree(dom);
+    return VMResult::success();
 }
 
 VMResult LibvirtVMService::forceStopVM(const std::string& name)
@@ -253,10 +263,15 @@ VMResult LibvirtVMService::forceStopVM(const std::string& name)
 	}
 
     int ret = virDomainDestroy(dom);    // 電源断相当の強制停止
-    virDomainFree(dom);
+    if (ret != 0) {
+        // 失敗理由は virDomainFree より先に取り出す（Free を呼ぶと Libvirt 内部のエラーが消える）
+        std::string reason = virGetLastErrorMessage();
+        virDomainFree(dom);
+        return VMResult::failure("Failed to force-stop VM '" + name + "': " + reason);
+    }
 
-    return (ret == 0) ? VMResult::success()
-	                  : VMResult::failure("Failed to force-stop VM: " + name);
+    virDomainFree(dom);
+    return VMResult::success();
 }
 
 VMResult LibvirtVMService::rebootVM(const std::string& name)
@@ -272,10 +287,15 @@ VMResult LibvirtVMService::rebootVM(const std::string& name)
 	}
 
     int ret = virDomainReboot(dom, 0);  // 第2引数 0 = デフォルト方式で再起動
-    virDomainFree(dom);
+    if (ret != 0) {
+        // 失敗理由は virDomainFree より先に取り出す（Free を呼ぶと Libvirt 内部のエラーが消える）
+        std::string reason = virGetLastErrorMessage();
+        virDomainFree(dom);
+        return VMResult::failure("Failed to reboot VM '" + name + "': " + reason);
+    }
 
-    return (ret == 0) ? VMResult::success()
-	                  : VMResult::failure("Failed to reboot VM: " + name);
+    virDomainFree(dom);
+    return VMResult::success();
 }
 
 VMResult LibvirtVMService::deleteVM(const std::string& name)
@@ -306,13 +326,14 @@ VMResult LibvirtVMService::deleteVM(const std::string& name)
     }
 
     int ret = virDomainUndefine(dom);   // VM定義の削除（ディスクイメージを消さない）
-    virDomainFree(dom);
-
     if (ret != 0) {
         // 想定外の失敗は libvirt が返したエラー文をそのまま伝える
         std::string reason = virGetLastErrorMessage();
-        return VMResult::failure("Failed to undefined domain: " + reason);
+        virDomainFree(dom);
+        return VMResult::failure("Failed to undefine domain '" + name + "': " + reason);
     }
+
+    virDomainFree(dom);
     return VMResult::success();
 }
 
