@@ -36,6 +36,7 @@ private:
     void updateTable(const std::vector<VMInfo>& vms);
     void updateDetail(const VMInfo& vm);
     void clearDetail();
+    void updateActionButtons(bool hasSelection, bool isActivate);       // 選択中VMの状態に応じて操作ボタンの有効/無効を切り替える
     QString selectedVMName() const;
     //void runVMAction(const QString& actionLabel, const std::function<bool(const std::string&)>& action);
     void runVMAction(const QString& actionLabel, const std::function<VMResult(const std::string&)>& action); // 失敗時にエラー文言をダイアログ表示できるようにする

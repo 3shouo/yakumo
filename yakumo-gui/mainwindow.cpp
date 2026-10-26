@@ -120,6 +120,7 @@ void MainWindow::updateDetail(const VMInfo &vm)
     ui->detailMemoryValue->setText(QString::number(vm.memoryMB) + "MB");
     ui->detailVcpusValue->setText(QString::number(vm.vcpus));
     ui->detailActiveValue->setText(vm.isActive ? "Yes" : "No");
+    updateActionButtons(true, vm.isActive);              // 選択中VMの状態でボタンを更新
 }
 
 void MainWindow::clearDetail()
@@ -129,7 +130,27 @@ void MainWindow::clearDetail()
     ui->detailMemoryValue->setText("-");
     ui->detailVcpusValue->setText("-");
     ui->detailActiveValue->setText("-");
+    updateActionButtons(false, false);                  // 未選択なのでVM操作ボタンをすべて無効化
 }
+
+// 選択中VMの状態に合わせて、VM単位の操作ボタンの有効/無効を切り替える
+// hasSelection: VMが選択されているか　isActivate: そのVMが稼働中か
+void MainWindow::updateActionButtons(bool hasSelection, bool isActive)
+{
+    const bool stopped = hasSelection && !isActive;     // 選択あり　かつ　停止中（!付きのisActive）
+    const bool running = hasSelection &&  isActive;     // 選択あり　かつ　稼働中
+
+    ui->startButton->setEnabled(stopped);                // 起動は停止中のみ
+    ui->shutdownButton->setEnabled(running);             // 通常終了は稼働中のみ
+    ui->forceStopButton->setEnabled(running);            // 強制停止は稼働中のみ
+    ui->rebootButton->setEnabled(running);               // 再起動は稼働中のみ
+    ui->deleteButton->setEnabled(stopped);               // 削除は停止中のみ（コア側の稼働中チェックは残す）
+    ui->consoleButton->setEnabled(running);              // VNCコンソールは稼働中のみ接続できる
+    ui->snapshotButton->setEnabled(hasSelection);        // スナップショットは稼働中/停止中どちらも扱える
+
+}
+
+
 
 // テーブルで選択中の行からVM名を取り出すヘルパー
 QString MainWindow::selectedVMName() const
