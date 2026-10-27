@@ -225,23 +225,46 @@ void MainWindow::on_forceStopButton_clicked()
     runVMAction("ForceStop", [this](const std::string& name){ return service_.forceStopVM(name); });
 }
 
+// Deleteボタンが押されたときの処理
+// 削除できない状態（稼働中 / スナップショット残存）は確認ダイアログを出さずに理由だけ表示する
 void MainWindow::on_deleteButton_clicked()
 {
-    qDebug() << "row =" << ui->vmTable->currentRow();
+    QString name = selectedVMName();
+    if (name.isEmpty()) {
+        return;
+    }
 
-    int row = ui->vmTable->currentRow();
-    if (row < 0) return;
+    // 1) 稼働中チェック：一覧表示は最大90秒古い可能性があるので、状態を取り直して判定する
+    std::vector<VMInfo> vms = fetchVMs();
+    for (const VMInfo& vm : vms) {
+        if (QString::fromStdString(vm.name) == name && vm.isActive) {
+            QMessageBox::warning(this, "Delete VM", QString("VM '%1' is running. Shut it down before deleting.").arg(name));
+            return;
+        }
+    }
 
-    QString name = ui->vmTable->item(row, 0)->text();
+    // 2) スナップショット残存チェック：残っていると libvirt が undefine を拒否する
+    std::vector<SnapshotInfo> snaps;
+    VMResult listResult = service_.listSnapshots(name.toStdString(), &snaps);
+    if (!listResult.ok) {
+        QMessageBox::warning(this, "Delete VM", QString::fromStdString(listResult.message));
+        return;
+    }
+    if (!snaps.empty()) {
+        QMessageBox::warning(this, "Delete VM", QString("VM '%1' still has %2 snapshot(s). Delete them first.").arg(name).arg(static_cast<int>(snaps.size())));
+        return;
+    }
 
+    // 3) ここまで来たら削除できる状態なので、確認してから実行する
     auto reply = QMessageBox::question(
         this,
         "Delete VM",
         QString("Delete VM '%1' ?\n This removes the libvirt definition.").arg(name),
-        QMessageBox::Yes, QMessageBox::No
-        );
+        QMessageBox::Yes,
+        QMessageBox::No
+    );
 
-    if (reply != QMessageBox::Yes){
+    if (reply != QMessageBox::Yes) {
         return;
     }
 
@@ -255,8 +278,7 @@ void MainWindow::on_deleteButton_clicked()
         );
     }
 
-    std::vector<VMInfo> vms = fetchVMs();
-    updateTable(vms);
+    updateTable(fetchVMs());
 }
 
 // VM作成ボタン(createButton)が押されたときの処理
