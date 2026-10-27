@@ -112,18 +112,16 @@ void SnapshotDialog::onCreateClicked()
 
     QString name = QInputDialog::getText(this, "Create Snapshot", "Snapshot name:", QLineEdit::Normal, QString(), &ok);
 
-    if (!ok || name.isEmpty()){
-        return;             // キャンセル or 空入力
+    if (!ok){
+        return;             // キャンセル（Cancel / Esc / ☓）は何もしない
     }
 
-    /*
-    std::string errorMessage;
-    bool created = createSnapshot(vmName_.toStdString(), name.toStdString(), "", &errorMessage);
+    name = name.trimmed();  // 前後の空白を除去（スペースだけの入力も空として扱う）
 
-    if (!created) {
-        QMessageBox::warning(this, "Create Snapshot", QString::fromStdString(errorMessage));
+    if (name.isEmpty()) {
+        QMessageBox::warning(this, "Create Snapshot", "Please enter a snapshot name.");
+        return;             // 空入力は理由を示して中断
     }
-    */
 
     VMResult result = service_.createSnapshot(vmName_.toStdString(), name.toStdString(), "");
 
