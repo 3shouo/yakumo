@@ -172,6 +172,10 @@ VMResult LibvirtVMService::createVM(
         << "<os>"
         << "<type arch='x86_64'>hvm</type>"
         << "</os>"
+        << "<features>"      // ゲストに見せるハードウェア機能を宣言するブロック
+        << "<acpi/>"        // ACPI を有効化。Shutdown/Rebootの電源ボタン通知が届くようになる
+        << "<apic/>"        // APIC を有効化。x86の標準構成でvirt-managerも常に付与する
+        << "</features>"    // ブロック終了
         << "<devices>"
         << "<disk type='file' device='disk'>"
         << "<driver name='qemu' type='qcow2'/>"
