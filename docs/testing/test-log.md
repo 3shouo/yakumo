@@ -31,7 +31,7 @@ yakumo-gui には自動テストがなく、動作確認は実機（libvirt + KV
 ---
 
 ## 2026-10-28 createVM の domain XML に ACPI を追加
-- ブランチ / コミット: feature/acpi（コミット前の作業ツリー）
+- ブランチ / コミット: feature/acpi（b36d960）
 - 対象: CR-01, CR-02, LC-02
 - 手順と結果:
   1. `<apci/>` のタイプミスがある状態で CreateVM（test-vm03 / 2048 MB / 2 vCPU / test.qcow2）→ 「Failed to define domain」。`journalctl -u libvirtd` に `unsupported configuration: unexpected feature 'apci'` が記録されていた。
