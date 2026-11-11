@@ -29,6 +29,28 @@ yakumo-gui には自動テストがなく、動作確認は実機（libvirt + KV
 - GUI は Qt Creator から起動。ログは qDebug（コンソール）と `journalctl -u libvirtd` で確認。
 
 ---
+## 2026-11-11 スナップショット作成中の GUI 応答性（SN-07）
+- ブランチ / コミット: feature/async-snapshot（コミット前の作業ツリー。コミット後にハッシュを追記）
+- 対象: SN-07
+- 手順と結果:
+  1. running 状態の VM でスナップショットの Create を実施（RAM 込み、30 秒以上）→ 処理中にダイアログのタイトルバーをつかんで動かし続けたが、描画は止まらず「応答なし」も出なかった。
+  2. コンソールの `timer fired` / `updateTable called` は遅延していないように見えたが、処理と重なったか確証なし。
+- 判定: 合格
+
+## 2026-11-04 スナップショット作成のワーカースレッド化（手順①）
+- ブランチ / コミット: feature/async-snapshot（コミット前の作業ツリー。コミット後にハッシュを追記）
+- 対象: SN-03, SN-06, SN-08（新規）
+- 手順と結果:
+  1. running の test-vm03 で Create → OS の「応答なし」は出ず、完了後に一覧が更新され ★ が付いた。
+  2. 処理中は Create / Revert / Delete / Close の 4 ボタンがグレーアウトし、完了後に戻った。
+  3. 処理中に ☓ を押す → ダイアログが閉じた（② で塞ぐ予定の既知の挙動）。
+  4. ☓ で閉じた後に ForceStop → コンソールに `libvirt: QEMU Driver error : Unable to read from monitor`、ForceStop の間 GUI が数秒固まり、約 1 秒後に yakumo-gui がクラッシュした（21:53:08）。
+- 気づき:
+  - ダイアログを閉じた後、MainWindow の一覧・ボタンが閉じる前の状態のまま（既存バグ: `on_snapshotButton_clicked` が `exec()` 後に更新しない）。ForceStop を押すと `runVMAction` 末尾の更新で直った。
+  - 手順 4 で savevm 中の QEMU が kill され、qcow2 に libvirt が知らないスナップショット `t`（520 MiB）と leaked cluster 3 個が残った（`qemu-img snapshot -l` / `qemu-img check` で確認）。
+  - クラッシュは coredump / apport / カーネルログに痕跡なし、原因未特定。
+- 判定: 一部保留（SN-03, SN-06 合格。クラッシュは ② 実装後に再テスト）
+
 
 ## 2026-10-28 createVM の domain XML に ACPI を追加
 - ブランチ / コミット: feature/acpi（b36d960）

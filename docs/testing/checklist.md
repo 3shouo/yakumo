@@ -40,9 +40,14 @@ ID は test-log.md から参照するためのもの。項目を増やすとき�
 |---|---|---|
 | SN-01 | shutoff の VM で名前を付けて Create | 一覧に現れ、Current（★）が付く |
 | SN-02 | 名前を空または空白だけにして OK | 警告ダイアログ。キャンセルは無言で閉じる |
-| SN-03 | running の VM で Create | RAM 込みで作成される（時間がかかり GUI が固まる: 既知問題） |
+| SN-03 | RAM 込みで作成される。GUI は固まらず、処理中はボタンが無効になる |
 | SN-04 | Revert | 選んだスナップショットの状態に戻る |
 | SN-05 | 子を持つスナップショットを Delete | 子が reparent され削除成功 |
+| SN-06 | running の VM で Create 中にダイアログの 4 ボタンを見る | すべて無効。完了後に有効へ戻る |
+| SN-07 | Create 中（30 秒超）にダイアログをドラッグし、コンソールの timer fired / updateTable を見る | 描画が止まらず、定期更新も遅延なく出る |
+| SN-08 | Create 中に ☓ / Esc / Close | 閉じない（② 実装後） |
+| SN-09 | ダイアログ内で Revert してから Close | MainWindow の状態列・詳細・ボタンが即座に更新される |
+
 
 ## VNC コンソール
 | ID | 手順 | 期待結果 |
