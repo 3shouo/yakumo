@@ -14,6 +14,8 @@
 #include <QDateTime>
 #include <QStringList>
 #include <vector>
+#include <QtConcurrent>         // QtConcurrent::run（名前空間 QtConcurrent を宣言する）
+#include <QFuture>              // QFuture<T>（QFutureWatcher 経由でも入るが、使う型は明示しておく）
 
 SnapshotDialog::SnapshotDialog(IVMService& service, const QString& vmName, QWidget* parent)
     : QDialog(parent)
@@ -24,6 +26,7 @@ SnapshotDialog::SnapshotDialog(IVMService& service, const QString& vmName, QWidg
     , revertButton_(new QPushButton("Revert", this))
     , deleteButton_(new QPushButton("Delete", this))
     , closeButton_(new QPushButton("Close", this))
+    , watcher_(new QFutureWatcher<VMResult>(this))          // 親を this にして寿命をダイアログに任せる
 {
     setWindowTitle("Snapshot - " + vmName);
     resize(640, 360);
@@ -54,6 +57,7 @@ SnapshotDialog::SnapshotDialog(IVMService& service, const QString& vmName, QWidg
     connect(revertButton_, &QPushButton::clicked, this, &SnapshotDialog::onRevertClicked);
     connect(deleteButton_, &QPushButton::clicked, this, &SnapshotDialog::onDeleteClicked);
     connect(closeButton_,  &QPushButton::clicked, this, &QDialog::accept);
+    connect(watcher_, &QFutureWatcher<VMResult>::finished, this, &SnapshotDialog::onJobFinished);   // 完了通知を配線
 
     refresh(); // 初回一覧表示
 }
@@ -123,6 +127,16 @@ void SnapshotDialog::onCreateClicked()
         return;             // 空入力は理由を示して中断
     }
 
+    IVMService* svc  = &service_;                    // ワーカーへ渡す参照先をポインタで取り出す（thisは渡さない）
+    std::string vm   = vmName_.toStdString();        // QString はダイアログの寿命で縛られるので std::string にコピー
+    std::string snap = name.toStdString();              // nameはこの関数を抜けると消えるローカル変数なので同様にコピー
+
+    startJob("Create Snapshot", [svc, vm, snap]() {
+        return svc->createSnapshot(vm, snap, "");    // この行だけが別スレッドで動く
+    });
+    // 結果表示とrefresh()は完了時にonJobFinished()が行う
+
+    /*
     VMResult result = service_.createSnapshot(vmName_.toStdString(), name.toStdString(), "");
 
     if (!result.ok) {
@@ -130,6 +144,7 @@ void SnapshotDialog::onCreateClicked()
     }
 
     refresh();              // 成否に関わらず最新化
+    */
 }
 
 
@@ -200,4 +215,36 @@ void SnapshotDialog::onDeleteClicked()
     refresh();
 }
 
+// 非同期ジョブを開始する（スレッド機構はこの関数と onJobFinished に閉じ込める）
+void SnapshotDialog::startJob(const QString& title, std::function<VMResult()> job)
+{
+    jobTitle_ = title;                                      // 失敗時のダイアログタイトルを控える
+    setBusy(true);                                          // 多重実行を防ぐため先にボタンを無効化
+    QFuture<VMResult> future = QtConcurrent::run(job);      // スレッドプールの別スレッドで job() を開始
+    watcher_->setFuture(future);                            // この future の完了を見張る → finishedが飛ぶ
+}
+
+
+// ワーカー完了後、GUIスレッドで呼ばれる
+void SnapshotDialog::onJobFinished()
+{
+    VMResult result = watcher_->result();                   // 戻り値を取り戻す（完了済みなので待たない）
+    setBusy(false);                                         // ボタンを戻す
+
+    if (!result.ok) {
+        QMessageBox::warning(this, jobTitle_, QString::fromStdString(result.message));
+    }
+
+    refresh();                                             // 成否に関わらず最新化（従来と同じ）
+}
+
+// 処理中はボタンを押せなくする
+void SnapshotDialog::setBusy(bool busy)
+{
+    busy_ = busy;
+    createButton_->setEnabled(!busy);
+    revertButton_->setEnabled(!busy);
+    deleteButton_->setEnabled(!busy);
+    closeButton_->setEnabled(!busy);
+}
 

@@ -3,6 +3,9 @@
 
 #include <QDialog>
 #include <QString>
+#include <QFutureWatcher>   // 別スレッドの処理完了をシグナルで受け取る
+#include <functional>       // std::function
+#include "vm_types.h"       // VMResult（Qt 非依存の共有型。core/ は INCLUDEPATH 済み）
 
 //　前方宣言（ヘッダでは型名だけわかればよい＝コンパイル高速化）
 class QTableWidget;
@@ -20,10 +23,13 @@ class SnapshotDialog : public QDialog
         void onCreateClicked();
         void onRevertClicked();
         void onDeleteClicked();
+        void onJobFinished();                   // ワーカー完了時に GUI スレッドで呼ばれる
 
     private:
         void refresh();                         // 一覧を取り直してテーブルへ反映
         QString selectedSnapshotName() const;   // 選択行のスナップショット名
+        void startJob(const QString& title, std::function<VMResult()> job);  // 非同期実行の入口（差し替え境界）
+        void setBusy(bool busy);
 
         IVMService&   service_;                 // コアへの入口
         QString       vmName_;                  // 対象VM名
@@ -32,6 +38,9 @@ class SnapshotDialog : public QDialog
         QPushButton*  revertButton_;
         QPushButton*  deleteButton_;
         QPushButton*  closeButton_;
+        QFutureWatcher<VMResult>* watcher_;     // 完了通知の受け口
+        QString       jobTitle_;                // 失敗ダイアログのタイトル用
+        bool          busy_ = false;              // 処理中フラグ
 };
 
 
