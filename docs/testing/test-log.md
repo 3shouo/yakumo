@@ -29,6 +29,21 @@ yakumo-gui には自動テストがなく、動作確認は実機（libvirt + KV
 - GUI は Qt Creator から起動。ログは qDebug（コンソール）と `journalctl -u libvirtd` で確認。
 
 ---
+## 2026-11-12 スナップショットダイアログの処理中ガード（手順②）
+- ブランチ / コミット: feature/async-snapshot（コミット前の作業ツリー。コミット後にハッシュを追記）
+- 対象: SN-08
+- 手順と結果:
+  1. running 状態の VM でSnapshotを Create 中に ☓、Esc、Alt+F4 → どれも閉じなかった。
+  2. Snapshotd作成処理中は Delete の右に「Create Snapshot in progress...」が出て、一覧の行をクリックしても選択が変わらず、カーソルが作業中表示になった。
+  3. 完了後にメッセージが消えてカーソルが戻り、グレーアウトしていた4 ボタンと一覧が使えた。Esc と ☓ で閉じられた。
+  4. shutoff 状態の VM でSnapshotを Create した→ 一瞬だけメッセージが出てすぐ戻った。
+  5. shutoff 状態の test-vm02 でSnapshotを Create → 「Failed to create snapshot」。コンソールに `qemu-img: Could not open '/var/lib/libvirt/images/myvm.qcow2': Failed to get "write" lock`。
+- 気づき:
+  - 手順 5 は test-vm01（running）と test-vm02 が myvm.qcow2 を共有していたため。QEMU のロックによる正常な拒否で、環境側の問題。
+  - ダイアログの文言に libvirt の理由が出ないので原因が分かりにくい → 作業候補（スナップショット系 4 関数に `virGetLastErrorMessage()` を付ける）。
+- 判定: 合格（SN-08）
+
+
 ## 2026-11-11 スナップショット作成中の GUI 応答性（SN-07）
 - ブランチ / コミット: feature/async-snapshot（コミット前の作業ツリー。コミット後にハッシュを追記）
 - 対象: SN-07
