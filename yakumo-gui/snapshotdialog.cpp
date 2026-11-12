@@ -16,6 +16,7 @@
 #include <vector>
 #include <QtConcurrent>         // QtConcurrent::run（名前空間 QtConcurrent を宣言する）
 #include <QFuture>              // QFuture<T>（QFutureWatcher 経由でも入るが、使う型は明示しておく）
+#include <QLabel>
 
 SnapshotDialog::SnapshotDialog(IVMService& service, const QString& vmName, QWidget* parent)
     : QDialog(parent)
@@ -26,6 +27,7 @@ SnapshotDialog::SnapshotDialog(IVMService& service, const QString& vmName, QWidg
     , revertButton_(new QPushButton("Revert", this))
     , deleteButton_(new QPushButton("Delete", this))
     , closeButton_(new QPushButton("Close", this))
+    , statusLabel_(new QLabel(this))                        // 空文字で生成し、処理中だけ文字を入れる
     , watcher_(new QFutureWatcher<VMResult>(this))          // 親を this にして寿命をダイアログに任せる
 {
     setWindowTitle("Snapshot - " + vmName);
@@ -44,6 +46,7 @@ SnapshotDialog::SnapshotDialog(IVMService& service, const QString& vmName, QWidg
     buttonLayout->addWidget(createButton_);
     buttonLayout->addWidget(revertButton_);
     buttonLayout->addWidget(deleteButton_);
+    buttonLayout->addWidget(statusLabel_);      // Delete の右に処理中メッセージ
     buttonLayout->addStretch();                 // 伸縮スペースで Close を右へ押しやる
     buttonLayout->addWidget(closeButton_);
 
@@ -238,7 +241,7 @@ void SnapshotDialog::onJobFinished()
     refresh();                                             // 成否に関わらず最新化（従来と同じ）
 }
 
-// 処理中はボタンを押せなくする
+// 処理中はボタンと一覧を触れないようにし、状態を表示する
 void SnapshotDialog::setBusy(bool busy)
 {
     busy_ = busy;
@@ -246,5 +249,23 @@ void SnapshotDialog::setBusy(bool busy)
     revertButton_->setEnabled(!busy);
     deleteButton_->setEnabled(!busy);
     closeButton_->setEnabled(!busy);
+    table_->setEnabled(!busy);                              // 処理中に選択行を変えられないようにする
+
+    if (busy) {
+        statusLabel_->setText(jobTitle_ + " in progress...");   // 例: "Create Snapshot in progress.........."
+        setCursor(Qt::BusyCursor);                          // このダイアログ上では「作業中」カーソル
+    } else {
+        statusLabel_->clear();                              // 文字を消す
+        unsetCursor();                                      // 設定のカーソルに戻す
+    }
+}
+
+// 閉じる要求（☓ / Esc / Alt+F4）。処理中は無視する
+void SnapshotDialog::reject()
+{
+    if (busy_) {
+        return;                                             // ワーカーが動いている間はダイアログ閉じない
+    }
+    QDialog::reject();                                      // 通常通り閉じる（exec(） が Rejected で戻る）
 }
 

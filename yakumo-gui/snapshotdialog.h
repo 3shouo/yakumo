@@ -10,6 +10,7 @@
 //　前方宣言（ヘッダでは型名だけわかればよい＝コンパイル高速化）
 class QTableWidget;
 class QPushButton;
+class QLabel;               // 処理用メッセージ用
 class IVMService;
 
 class SnapshotDialog : public QDialog
@@ -18,6 +19,9 @@ class SnapshotDialog : public QDialog
 
     public:
         explicit SnapshotDialog(IVMService& service, const QString& vmName, QWidget* parent = nullptr);
+
+    protected:
+        void reject() override;                 // ☓ / Esc / Alt+F4 からの「閉じる」要求を処理中は無視する
 
     private slots:
         void onCreateClicked();
@@ -38,9 +42,10 @@ class SnapshotDialog : public QDialog
         QPushButton*  revertButton_;
         QPushButton*  deleteButton_;
         QPushButton*  closeButton_;
+        QLabel*       statusLabel_;             // 処理中メッセージ（ボタン行の左側）
         QFutureWatcher<VMResult>* watcher_;     // 完了通知の受け口
         QString       jobTitle_;                // 失敗ダイアログのタイトル用
-        bool          busy_ = false;              // 処理中フラグ
+        bool          busy_ = false;            // 処理中フラグ
 };
 
 
