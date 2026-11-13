@@ -138,16 +138,6 @@ void SnapshotDialog::onCreateClicked()
         return svc->createSnapshot(vm, snap, "");    // この行だけが別スレッドで動く
     });
     // 結果表示とrefresh()は完了時にonJobFinished()が行う
-
-    /*
-    VMResult result = service_.createSnapshot(vmName_.toStdString(), name.toStdString(), "");
-
-    if (!result.ok) {
-        QMessageBox::warning(this, "Create Snapshot", QString::fromStdString(result.message));
-    }
-
-    refresh();              // 成否に関わらず最新化
-    */
 }
 
 
@@ -165,15 +155,6 @@ void SnapshotDialog::onRevertClicked()
     if (reply != QMessageBox::Yes) {
         return;
     }
-
-    /*
-    std::string errorMessage;
-    bool ok = revertSnapshot(vmName_.toStdString(), name.toStdString(), &errorMessage);
-
-    if (!ok) {
-        QMessageBox::warning(this, "Revert Snapshot", QString::fromStdString(errorMessage));
-    }
-        */
 
     VMResult result =service_.revertSnapshot(vmName_.toStdString(), name.toStdString());
 
@@ -199,15 +180,6 @@ void SnapshotDialog::onDeleteClicked()
     if (reply != QMessageBox::Yes) {
         return;
     }
-
-    /*
-    std::string errorMessage;
-    bool ok = deleteSnapshot(vmName_.toStdString(), name.toStdString(), &errorMessage);
-
-    if (!ok) {
-        QMessageBox::warning(this, "Delete Snapshot", QString::fromStdString(errorMessage));
-    }
-    */
 
     VMResult result = service_.deleteSnapshot(vmName_.toStdString(), name.toStdString());
 
