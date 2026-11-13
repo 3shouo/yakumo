@@ -156,6 +156,7 @@ void SnapshotDialog::onRevertClicked()
         return;
     }
 
+    /*
     VMResult result =service_.revertSnapshot(vmName_.toStdString(), name.toStdString());
 
     if (!result.ok) {
@@ -163,6 +164,16 @@ void SnapshotDialog::onRevertClicked()
     }
 
     refresh();
+    */
+
+    IVMService* svc  = &service_;                    // ワーカーへ渡す参照をポインタで取り出す（thisは渡さない）
+    std::string vm   = vmName_.toStdString();        // QString はダイアログの寿命に縛られるのでstd::stringにコピー
+    std::string snap = name.toStdString();           // name はこの関数を抜けると消えるので同様にコピー
+
+    startJob("Revert Snapshot", [svc, vm, snap]() {
+        return svc->revertSnapshot(vm, snap);        // この行だけが別スレッド
+    });
+    // 結果表示と refresh() は完了時に onJobFinished() が行う
 }
 
 
@@ -181,6 +192,7 @@ void SnapshotDialog::onDeleteClicked()
         return;
     }
 
+    /*
     VMResult result = service_.deleteSnapshot(vmName_.toStdString(), name.toStdString());
 
     if (!result.ok) {
@@ -188,6 +200,16 @@ void SnapshotDialog::onDeleteClicked()
     }
 
     refresh();
+    */
+
+    IVMService* svc  = &service_;                    // ワーカーへ渡す参照をポインタで取り出す（thisは渡さない）
+    std::string vm   = vmName_.toStdString();        // QString はダイアログの寿命に縛られるのでstd::stringにコピー
+    std::string snap = name.toStdString();           // name はこの関数を抜けると消えるので同様にコピー
+
+    startJob("Delete Snapshot", [svc, vm, snap]() {
+        return svc->deleteSnapshot(vm, snap);        // この行だけが別スレッド
+        });
+    // 結果表示と refresh() は完了時に onJobFinished() が行う
 }
 
 // 非同期ジョブを開始する（スレッド機構はこの関数と onJobFinished に閉じ込める）
