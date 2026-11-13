@@ -47,6 +47,7 @@ ID は test-log.md から参照するためのもの。項目を増やすとき�
 | SN-07 | Create 中（30 秒超）にダイアログをドラッグし、コンソールの timer fired / updateTable を見る | 描画が止まらず、定期更新も遅延なく出る |
 | SN-08 | Create 中に ☓ / Esc / Close | 閉じない（② 実装後） |
 | SN-09 | ダイアログ内で Revert してから Close | MainWindow の状態列・詳細・ボタンが即座に更新される |
+| SN-10 | ダイアログを開いた直後、何も選択せずに Revert / Delete | 「Please select a snapshot.」が出る |
 
 
 ## VNC コンソール
