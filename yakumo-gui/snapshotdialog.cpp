@@ -114,20 +114,6 @@ QString SnapshotDialog::selectedSnapshotName() const
     }
 
     return item->text();
-    /*
-    int row = table_->currentRow();
-
-    if (row < 0) {
-        return QString();       // 未選択
-    }
-
-    QTableWidgetItem* item = table_->item(row, 0);
-    
-    if (!item) {
-        return QString();
-    }
-    return item->text();
-    */
 }
 
 // QInputDialogで名前入力
@@ -174,16 +160,6 @@ void SnapshotDialog::onRevertClicked()
         return;
     }
 
-    /*
-    VMResult result =service_.revertSnapshot(vmName_.toStdString(), name.toStdString());
-
-    if (!result.ok) {
-        QMessageBox::warning(this, "Revert Snapshot", QString::fromStdString(result.message));
-    }
-
-    refresh();
-    */
-
     IVMService* svc  = &service_;                    // ワーカーへ渡す参照をポインタで取り出す（thisは渡さない）
     std::string vm   = vmName_.toStdString();        // QString はダイアログの寿命に縛られるのでstd::stringにコピー
     std::string snap = name.toStdString();           // name はこの関数を抜けると消えるので同様にコピー
@@ -209,16 +185,6 @@ void SnapshotDialog::onDeleteClicked()
     if (reply != QMessageBox::Yes) {
         return;
     }
-
-    /*
-    VMResult result = service_.deleteSnapshot(vmName_.toStdString(), name.toStdString());
-
-    if (!result.ok) {
-        QMessageBox::warning(this, "Delete Snapshot", QString::fromStdString(result.message));
-    }
-
-    refresh();
-    */
 
     IVMService* svc  = &service_;                    // ワーカーへ渡す参照をポインタで取り出す（thisは渡さない）
     std::string vm   = vmName_.toStdString();        // QString はダイアログの寿命に縛られるのでstd::stringにコピー
