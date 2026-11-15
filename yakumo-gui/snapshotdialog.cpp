@@ -93,11 +93,28 @@ void SnapshotDialog::refresh()
 
     table_->resizeColumnsToContents();
     table_->horizontalHeader()->setStretchLastSection(true);
+    table_->clearSelection();                                   // 一覧を作り直したら選択を外す（別の行が選ばれたままになるのを防ぐ）
 }
 
 // 選択行の名前の取得
 QString SnapshotDialog::selectedSnapshotName() const
 {
+    // 選択行（ハイライトされている行）の名前の取得
+    QList<QTableWidgetItem*> items = table_->selectedItems();     // ハイライト中の説の一覧を取得
+
+    if (items.isEmpty()) {
+        return QString();        // 未選択
+    }
+
+    int row = items.first()->row();                            // 先頭セルから行番号を得る（行単位・単一選択なので全セル同じ行）
+    QTableWidgetItem* item = table_->item(row, 0);             // その行の0列目(Name)
+
+    if (!item) {
+        return QString();
+    }
+
+    return item->text();
+    /*
     int row = table_->currentRow();
 
     if (row < 0) {
@@ -110,6 +127,7 @@ QString SnapshotDialog::selectedSnapshotName() const
         return QString();
     }
     return item->text();
+    */
 }
 
 // QInputDialogで名前入力
