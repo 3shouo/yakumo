@@ -362,6 +362,7 @@ void MainWindow::on_snapshotButton_clicked()
 
     SnapshotDialog dialog(service_, name, this);  // 選択中VM名を渡して生成
     dialog.exec();                                // モーダル表示（閉じるまでブロック）
+    updateTable(fetchVMs());                      // ダイアログ内の Revert などで状態が変わるので一覧・詳細・ボタンを更新
 }
 
 // ウォッチドッグがVMを復旧させたとき
