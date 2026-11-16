@@ -29,6 +29,17 @@ yakumo-gui には自動テストがなく、動作確認は実機（libvirt + KV
 - GUI は Qt Creator から起動。ログは qDebug（コンソール）と `journalctl -u libvirtd` で確認。
 
 ---
+## 2026-11-16 Snapshot ダイアログを閉じた後の一覧更新
+- ブランチ / コミット: fix/refresh-after-snapshot-dialog（0a2cdfd）
+- 対象: SN-09
+- 手順と結果:
+  1. running 状態の VM で Snapshot ダイアログを開き、State が shutoff 状態のスナップショットへ Revert して Close ボタンを教えてSnapshotダイアログを閉じる→ VM一覧内のRevertしたVMの状態列が shutoff、詳細の Active が No になり、Start が押せて ForceStop が押せない状態にすぐ切り替わった。
+  2. shutoff 状態の VM に対して、State が running 状態のスナップショットへ Revert して Close ボタンを押しSnapshot ダイアログを閉じる→ running 用の表示にすぐ切り替わった。
+  3. 何もせずに開いて閉じる → 表示は変わらず、選択行もそのままだった。
+- 気づき:
+  - 2026-11-04 に見つかった不具合（ダイアログを閉じた後も一覧・ボタンが閉じる前の状態のまま）はこの修正で解消。
+- 判定: 合格
+
 ## 2026-11-15 スナップショット操作の対象を選択行で判定する修正
 - ブランチ / コミット: fix/snapshot-selection（4ab3420）
 - 対象: SN-10
